@@ -1,13 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @author elioz
-%%% @copyright (C) 2021, <COMPANY>
-%%% @doc
-%%%
-%%% @end
-%%% Created : 20.  May 2021 1:32 PM
+
+%%Credit:
+%%https://gist.github.com/artefactop/7ae92213674810d715d7
+
 %%%-------------------------------------------------------------------
 -module(csv_reader).
--author("elioz").
 
 %% API
 -export([main/1]).
