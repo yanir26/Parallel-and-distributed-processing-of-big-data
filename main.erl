@@ -13,31 +13,80 @@
 -export([start/0,f/0]).
 
 start()->
-  %send my address/Pid/node to the master
-  List_Of_Command_From_Master = construction_from_master(),
+  Node_Of_Master = bla, %%%%change
+  register(main,self()),
+  Server_Pid = spawn(fun() ->server(start,Node_Of_Master) end),
+  List_Of_Command_From_Master = receive
+                                  X->X
+                                end,
   MY_ID = lists:nth(1,List_Of_Command_From_Master),
-  My_Responsibility = lists:nth(MY_ID,lists:nth(3,List_Of_Command_From_Master)),
-  Responsibilities = lists:nth(3,List_Of_Command_From_Master),
-  List_Of_Addresses = lists:nth(2,List_Of_Command_From_Master),
-  %%We will define worker_i as the worker which has the responsibility on range i
-  Address_Of_Worker1 =  lists:nth(index_of(1,Responsibilities),List_Of_Addresses),
-  register(worker1,Address_Of_Worker1),
-  Address_Of_Worker2 =  lists:nth(index_of(2,Responsibilities),List_Of_Addresses),
-  register(worker2,Address_Of_Worker2),
-  Address_Of_Worker3 =  lists:nth(index_of(3,Responsibilities),List_Of_Addresses),
-  register(worker3,Address_Of_Worker3),
-  Address_Of_Worker4 =  lists:nth(index_of(4,Responsibilities),List_Of_Addresses),
-  register(worker4,Address_Of_Worker4),
-  Address_Of_Master = lists:nth(4,List_Of_Command_From_Master),
-  register(master,Address_Of_Master),
+  Number_Of_Worker = length(lists:nth(2,List_Of_Command_From_Master)),
 
 
   Pid_Sending_Process = spawn(fun() -> read_file_and_send_the_data(MY_ID) end),
-  Structure = get_data_and_organized_it(),
+  Structure = get_data_and_organized_it(Number_Of_Worker),
 
   %will wait to input to search
 
   ok.
+
+manage_of_subworkers(Structure)->
+  receive
+    {incomingInput,Source,Input,Depth}->
+      Partners = maps:get(Input,Structure,notfound),
+      if
+        Depth >= 3-> 1;%Need to return sub tree that the root is Input and all Partners are the suns
+        true -> %Depth < 3
+          %[raise process for every partner || Element <- Partners]
+      1
+      end
+  end,
+  manage_of_subworkers(Structure).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%server:
+server(start,Master)->
+  register(node(),self()),
+  {Master,Master}!node(),
+  List_Of_Command_From_Master = construction_from_master(),
+  main!List_Of_Command_From_Master,
+  [Worker1,Worker2,Worker3,Worker4] = lists:nth(2,List_Of_Command_From_Master),
+  server(Worker1,Worker2,Worker3,Worker4,Master).
+
+server(Worker1,Worker2,Worker3,Worker4,Master)->
+  receive
+    {localUpdate,worker1,Element,Rest_Of_Line} ->
+      {Worker1,Worker1}!{remoteUpdate,Element,Rest_Of_Line};
+    {localUpdate,worker2,Element,Rest_Of_Line} ->
+      {Worker2,Worker2}!{remoteUpdate,Element,Rest_Of_Line};
+    {localUpdate,worker3,Element,Rest_Of_Line} ->
+      {Worker3,Worker3}!{remoteUpdate,Element,Rest_Of_Line};
+    {localUpdate,worker4,Element,Rest_Of_Line} ->
+      {Worker4,Worker4}!{remoteUpdate,Element,Rest_Of_Line};
+    {remoteUpdate,Element,Rest_Of_Line}->
+      main!{organize,Element,Rest_Of_Line};
+    local_finish_to_read_file ->
+      {Worker1,Worker1}!broadcast_finish_to_read_file,
+      {Worker2,Worker2}!broadcast_finish_to_read_file,
+      {Worker3,Worker3}!broadcast_finish_to_read_file,
+      {Worker4,Worker4}!broadcast_finish_to_read_file;
+    broadcast_finish_to_read_file->
+      main!organize_stop;
+    {request_input,Source,Input,Depth}->  %We will need to return sub tree which the Input will be the root to the Source
+      %What to do
+      main!{incomingInput,Source,Input,Depth}
+
+
+  end,
+  server(Worker1,Worker2,Worker3,Worker4,Master).
+
+
+construction_from_master()->
+  %Res = receive
+  %       X->X
+  %       end,
+  [1,[listOfallComputers],address_of_master].
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %This section will read the proper file and divide the data between all proper processes:
@@ -50,39 +99,30 @@ read_file_and_send_the_data(MY_ID)->
   File =  csv_reader:main(["file" ++ [MY_ID + 48] ++ ".csv"]),  %Open the right file
   [work_on_line(X) || X <- File],
   %send to all stop
+  Server = node(),
+  Server!local_finish_to_read_file,
   ok.
-
-
-construction_from_master()->
-  %Res = receive
-   %       X->X
-    %    end,
-  [1,[listOfallComputers],[1,2,3,4],address_of_master].
 
 work_on_line(Input)->
   Line = string:split(element(2,Input),"|",all),
   [send_update_to_the_fit_worker(X,Line -- [X]) || X <- Line]. % all_permutations
 
 send_update_to_the_fit_worker(Element,Rest_Of_Line)->
+  Server = node(),
   First_Letter = first_letter(Element),
   Message = {update,Element,Rest_Of_Line},
   if
     ((First_Letter >= 97) and (First_Letter =< 102))  -> %send to computer that responsible on letters a - f
-      %Address_To_Send = lists:nth(index_of(1,Responsibilities),List_Of_Addresses),
-      %send Message to Address_To_Send
-      worker1!Message,
+      Server!{localUpdate,worker1,Element,Rest_Of_Line},
       1;
     ((First_Letter >= 103) and (First_Letter =< 108))  ->%send to computer that responsible on letters g - l
-      %Address_To_Send = lists:nth(index_of(2,Responsibilities),List_Of_Addresses),
-      worker2!Message,
+      Server!{localUpdate,worker2,Element,Rest_Of_Line},
       1;
     ((First_Letter >= 109) and (First_Letter =< 115))  -> %send to computer that responsible on letters m - s
-      %Address_To_Send = lists:nth(index_of(3,Responsibilities),List_Of_Addresses),
-      worker3!Message,
+      Server!{localUpdate,worker3,Element,Rest_Of_Line},
       1;
     ((First_Letter >= 116) and (First_Letter =< 122))  ->%send to computer that responsible on letters t - z
-      %Address_To_Send = lists:nth(index_of(4,Responsibilities),List_Of_Addresses),
-      worker4!Message,
+      Server!{localUpdate,worker4,Element,Rest_Of_Line},
       1;
     true -> error
   end.
@@ -90,17 +130,24 @@ send_update_to_the_fit_worker(Element,Rest_Of_Line)->
 first_letter(Element)->hd(string:lowercase(Element)). %Give the first letter in word, but only lowercase
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %This section will get the data from the former section and organized it in data structure;
-get_data_and_organized_it()->
+get_data_and_organized_it(Number_Of_Worker)->
   Structure = maps:new(),
-  get_data_and_organized_it(Structure).
+  get_data_and_organized_it(Structure,Number_Of_Worker,Number_Of_Worker).
 
-get_data_and_organized_it(Structure)->
+get_data_and_organized_it(Structure,I,Number_Of_Worker)->
     receive
-      {update,Element,Partners} ->
-        Old_Val = maps:get(Element,Structure),
-        maps:put(Element, Old_Val ++ Partners, Structure),
-        get_data_and_organized_it();
-      stop->Structure;
+      {organize,Element,Partners} ->
+        Old_Val = maps:get(Element,Structure,notfound),
+        New_Structure = if
+                          Old_Val =:= notfound -> maps:put(Element, Partners, Structure);
+                          true -> maps:put(Element, Old_Val ++ Partners, Structure)
+                        end,
+        get_data_and_organized_it(New_Structure,I,Number_Of_Worker);
+      organize_stop->
+        if
+          I =:= Number_Of_Worker -> Structure;
+          true -> get_data_and_organized_it(Structure,I + 1,Number_Of_Worker)
+        end;
       _->error
     end.
 
@@ -113,10 +160,23 @@ index_of(Item, [Item|_], Index) -> Index;
 index_of(Item, [_|Tl], Index) -> index_of(Item, Tl, Index+1).
 
 
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%tests:
+
+
 f()->
-  receive
-    X->
-      io:format("Yesss ~p ~n",[X])
-  end.
+  register(node(),self()),
+  P = spawn(fun()-> g() end),
+  L = receive
+        X->X
+      end,
+  io:format("Yesss ~p ~n",[L]).
+
+g()->
+  S = node(),
+  S!hello.
 
 
