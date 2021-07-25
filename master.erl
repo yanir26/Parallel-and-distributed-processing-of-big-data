@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @author elioz
+%%% @author Elioz & Yanir
 %%% @copyright (C) 2021, <COMPANY>
 %%% @doc
 %%%
@@ -17,32 +17,34 @@ start()->
   register(main,self()),
   Server_Pid = spawn(fun() ->server(start,Number_Od_Workers) end),
 
+  X = get_input_from_customer(),
+  X.
 
-  ok.
 
 get_input_from_customer()->
-  Input = bla, %change
+  Input = "Bernd Finkemeyer", %change
   Server = node(),
-  First_Letter = first_letter(Input),
-  if
-    ((First_Letter >= 97) and (First_Letter =< 102))  -> %send to computer that responsible on letters a - f
-      Server!{request_input,worker1,Input},
-      1;
-    ((First_Letter >= 103) and (First_Letter =< 108))  ->%send to computer that responsible on letters g - l
-      Server!{request_input,worker2,Input},
-      1;
-    ((First_Letter >= 109) and (First_Letter =< 115))  -> %send to computer that responsible on letters m - s
-      Server!{request_input,worker3,Input},
-      1;
-    ((First_Letter >= 116) and (First_Letter =< 122))  ->%send to computer that responsible on letters t - z
-      Server!{request_input,worker4,Input},
-      1;
-    true -> error
-  end.
+  Worker = for_which_worker(Input),
+  Server!{local_request_with_input,Worker,self(),Input,1,[Input]},
+  Res = receive
+          {final_result_for_request,{Answer,Root}}->Answer
+        end,
+  Res.
 
 %request
 
+
 first_letter(Element)->hd(string:lowercase(Element)). %Give the first letter in word, but only lowercase
+
+for_which_worker(Element)->
+  First_Letter = first_letter(Element),
+  if
+    ((First_Letter >= 97) and (First_Letter =< 102))  -> worker1;%worker1 is responsible on letters a - f
+    ((First_Letter >= 103) and (First_Letter =< 108))  -> worker2;%worker2 is responsible on letters g - l
+    ((First_Letter >= 109) and (First_Letter =< 115))  -> worker3;%worker3 is responsible on letters m - s
+    ((First_Letter >= 116) and (First_Letter =< 122))  ->worker4;%worker4 is  responsible on letters t - z
+    true -> error
+  end.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %server:
 server(start,Number_Od_Workers)->
@@ -56,14 +58,24 @@ server(start,Number_Od_Workers)->
 
 server(Worker1,Worker2,Worker3,Worker4)->
   receive
-    {request_input,worker1,Input}->
-      {Worker1,Worker1}!{request_input,node(),Input,0};
-    {request_input,worker2,Input}->
-      {Worker2,Worker2}!{request_input,node(),Input,0};
-    {request_input,worker3,Input}->
-      {Worker3,Worker3}!{request_input,node(),Input,0};
-    {request_input,worker4,Input}->
-      {Worker4,Worker4}!{request_input,node(),Input,0}
+    {request_input,worker1,Source_Pid,Input}->
+      {Worker1,Worker1}!{request_input,node(),Source_Pid,Input,0};
+    {request_input,worker2,Source_Pid,Input}->
+      {Worker2,Worker2}!{request_input,node(),Source_Pid,Input,0};
+    {request_input,worker3,Source_Pid,Input}->
+      {Worker3,Worker3}!{request_input,node(),Source_Pid,Input,0};
+    {request_input,worker4,Source_Pid,Input}->
+      {Worker4,Worker4}!{request_input,node(),Source_Pid,Input,0};
+    {local_request_with_input,worker1,Source_Pid,Input,Depth,Fathers}->
+      {Worker1,Worker1}!{incoming_input,node(),Source_Pid,Input,Depth,Fathers};
+    {local_request_with_input,worker2,Source_Pid,Input,Depth,Fathers}->
+      {Worker2,Worker2}!{incoming_input,node(),Source_Pid,Input,Depth,Fathers};
+    {local_request_with_input,worker3,Source_Pid,Input,Depth,Fathers}->
+      {Worker3,Worker3}!{incoming_input,node(),Source_Pid,Input,Depth,Fathers};
+    {local_request_with_input,worker4,Source_Pid,Input,Depth,Fathers}->
+      {Worker4,Worker4}!{incoming_input,node(),Source_Pid,Input,Depth,Fathers};
+    {mission_accomplished,Source_Pid,{Res,Root}}->
+      Source_Pid!{final_result_for_request,{Res,Root}}
 
   end,
   server(Worker1,Worker2,Worker3,Worker4).

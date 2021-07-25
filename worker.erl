@@ -1,3 +1,4 @@
+
 %%%-------------------------------------------------------------------
 %%% @author Elioz & Yanir
 %%% @copyright (C) 2021, <COMPANY>
@@ -10,10 +11,10 @@
 -author("Elioz & Yanir").
 
 %% API
--export([start/0,f/0]).
+-export([start/0,f/2,g/1]).
 
 start()->
-  Node_Of_Master = bla, %%%%change
+  Node_Of_Master = 'master@elioz-VirtualBox', %%%%change
   register(main,self()),
   Server_Pid = spawn(fun() ->server(start,Node_Of_Master) end),
   List_Of_Command_From_Master = receive
@@ -27,10 +28,12 @@ start()->
   Structure = get_data_and_organized_it(Number_Of_Worker),
 
   %will wait to input to search
-  Manage_Of_Requests_Pid = spawn(fun() -> manage_of_requests_fun(Structure,maps:new(),[]) end),
-  register(manage_of_requests,Manage_Of_Requests_Pid),
+  Manage_Of_Requests_Pid = spawn(fun() -> manage_requests_fun(Structure,[]) end),
+  register(manage_requests,Manage_Of_Requests_Pid),
 
-  ok.
+
+  Structure.
+  %ok.
 
 
 
@@ -65,21 +68,31 @@ server(Worker1,Worker2,Worker3,Worker4,Master)->
       {Worker4,Worker4}!broadcast_finish_to_read_file;
     broadcast_finish_to_read_file->
       main!organize_stop;
-    {request_input,Source_Node,Source_Pid,Input,Depth}->  %We will need to return sub tree which the Input will be the root to the Source
-      %What to do
-      manage_of_requests!{incomingInput,Source_Node,Source_Pid,Input,Depth}
-
+    {incoming_input,Source_Node,Source_Pid,Input,Depth,Fathers}->
+      manage_requests!{new_request,Source_Node,Source_Pid,Input,Depth,Fathers};
+    {answer_for_request,Source_Node,Source_Pid,{Res,Root}}->
+      {Source_Node,Source_Node}!{mission_accomplished,Source_Pid,{Res,Root}};
+    {mission_accomplished,Source_Pid,{Res,Root}}->
+      Source_Pid!{final_result_for_request,{Res,Root}};
+    {local_request_with_input,worker1,Source_Pid,Input,Depth,Fathers}->
+      {Worker1,Worker1}!{incoming_input,node(),Source_Pid,Input,Depth,Fathers};
+    {local_request_with_input,worker2,Source_Pid,Input,Depth,Fathers}->
+      {Worker2,Worker2}!{incoming_input,node(),Source_Pid,Input,Depth,Fathers};
+    {local_request_with_input,worker3,Source_Pid,Input,Depth,Fathers}->
+      {Worker3,Worker3}!{incoming_input,node(),Source_Pid,Input,Depth,Fathers};
+    {local_request_with_input,worker4,Source_Pid,Input,Depth,Fathers}->
+      {Worker4,Worker4}!{incoming_input,node(),Source_Pid,Input,Depth,Fathers}
 
   end,
   server(Worker1,Worker2,Worker3,Worker4,Master).
 
 
 construction_from_master()->
-  %Res = receive
-  %       X->X
-  %       end,
-  [1,[listOfallComputers],address_of_master].
-
+  Res = receive
+         X->X
+         end,
+  %[1,[listOfallComputers],address_of_master].
+  Res.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -99,29 +112,26 @@ read_file_and_send_the_data(MY_ID)->
 
 work_on_line(Input)->
   Line = string:split(element(2,Input),"|",all),
-  [send_update_to_the_fit_worker(X,Line -- [X]) || X <- Line]. % all_permutations
+  [send_update_to_the_fit_worker(X,Line -- [X]) || X <- Line,X =/= []]. % all_permutations
 
 send_update_to_the_fit_worker(Element,Rest_Of_Line)->
   Server = node(),
   First_Letter = first_letter(Element),
-  Message = {update,Element,Rest_Of_Line},
-  if
-    ((First_Letter >= 97) and (First_Letter =< 102))  -> %send to computer that responsible on letters a - f
-      Server!{localUpdate,worker1,Element,Rest_Of_Line},
-      1;
-    ((First_Letter >= 103) and (First_Letter =< 108))  ->%send to computer that responsible on letters g - l
-      Server!{localUpdate,worker2,Element,Rest_Of_Line},
-      1;
-    ((First_Letter >= 109) and (First_Letter =< 115))  -> %send to computer that responsible on letters m - s
-      Server!{localUpdate,worker3,Element,Rest_Of_Line},
-      1;
-    ((First_Letter >= 116) and (First_Letter =< 122))  ->%send to computer that responsible on letters t - z
-      Server!{localUpdate,worker4,Element,Rest_Of_Line},
-      1;
-    true -> error
-  end.
+  Server!{localUpdate,for_which_worker(Element),Element,Rest_Of_Line},
+  ok.
+
 
 first_letter(Element)->hd(string:lowercase(Element)). %Give the first letter in word, but only lowercase
+
+for_which_worker(Element)->
+  First_Letter = first_letter(Element),
+  if
+    ((First_Letter >= 97) and (First_Letter =< 102))  -> worker1;%worker1 is responsible on letters a - f
+    ((First_Letter >= 103) and (First_Letter =< 108))  -> worker2;%worker2 is responsible on letters g - l
+    ((First_Letter >= 109) and (First_Letter =< 115))  -> worker3;%worker3 is responsible on letters m - s
+    ((First_Letter >= 116) and (First_Letter =< 122))  ->worker4;%worker4 is  responsible on letters t - z
+    true -> error
+  end.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %This section will get the data from the former section and organized it in data structure;
 get_data_and_organized_it(Number_Of_Worker)->
@@ -147,61 +157,51 @@ get_data_and_organized_it(Structure,I,Number_Of_Worker)->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %This section will manage request for searching in the structure
-manage_of_requests_fun(Structure,History,List_Of_Processes)->
+manage_requests_fun(Structure,List_Of_Processes)->
   receive
-    {incomingInput,Source_Node,Source_Pid,Input,Depth}->
-      case maps:is_key(Input,History) of
-        true -> %return none to server
-
-          manage_of_requests_fun(Structure,History,List_Of_Processes);
-        false->
-          Pid = spawn(fun() -> searcher(Source_Node,Source_Pid,Input,Depth,Structure) end),
-          New_History = maps:put(Input,asked_for,History),
-
-          manage_of_requests_fun(Structure,New_History,List_Of_Processes ++ [Pid])
-      end
+    {new_request,Source_Node,Source_Pid,Input,Depth,Fathers}->
+      Pid = spawn(fun() -> searcher(Structure,Source_Node,Source_Pid,Input,Depth,Fathers) end),
+      manage_requests_fun(Structure,List_Of_Processes ++ [Pid]);
+    kill -> stopped
 
   end.
 
-searcher(Source_Node,Source_Pid,Input,Depth,Structure)->
+
+searcher(Structure,Source_Node,Source_Pid,Input,Depth,Fathers)->
   Server = node(),
   Partners = maps:get(Input,Structure,notfound),
   Number_Of_Partners = length(Partners),
   if
-    Depth >= 3-> 1;%Need to return sub tree that the root is Input and all Partners are the suns
-    true -> %Depth < 3
-      %[raise process for every partner || Element <- Partners]
-      1
+    Depth =:= 3 ->
+      Res = make_tree(Input,Partners),
+      Server!{answer_for_request,Source_Node,Source_Pid,{Res,Input}};
+
+    true ->
+      List_Of_Relevant_Partners = [Server!{local_request_with_input,for_which_worker(Person),self(),Person,Depth + 1,Fathers ++ [Person]} || Person <- Partners,not(lists:member(Person,Fathers))],
+      List_Of_Sub_Trees = receiving_sub_trees(length(List_Of_Relevant_Partners),[]), %list of [{Res,Root}] of all sub trees
+      Res = merge_trees(Input,List_Of_Sub_Trees),
+      Server!{answer_for_request,Source_Node,Source_Pid,{Res,Input}}
   end,
-  First_Letter = first_letter(Input),
-  if
-    ((First_Letter >= 97) and (First_Letter =< 102))  -> %send to computer that responsible on letters a - f
-      Server!{request_input,worker1,self(),Input},
-      1;
-    ((First_Letter >= 103) and (First_Letter =< 108))  ->%send to computer that responsible on letters g - l
-      Server!{request_input,worker2,self(),Input},
-      1;
-    ((First_Letter >= 109) and (First_Letter =< 115))  -> %send to computer that responsible on letters m - s
-      Server!{request_input,worker3,self(),Input},
-      1;
-    ((First_Letter >= 116) and (First_Letter =< 122))  ->%send to computer that responsible on letters t - z
-      Server!{request_input,worker4,self(),Input},
-      1;
-    true -> error
-  end,
-  List_Of_Sub_Trees = receiving_sub_trees(Number_Of_Partners,[]),
-  1.
+  finito.
 
 
 receiving_sub_trees(0,List_Of_Sub_Trees)->List_Of_Sub_Trees;
 receiving_sub_trees(I,List_Of_Sub_Trees)->
   receive
-    {answer,Sub_Tree}->
-      if
-        Sub_Tree =:= none ->receiving_sub_trees(I - 1,List_Of_Sub_Trees);
-        true -> receiving_sub_trees(I - 1,List_Of_Sub_Trees ++ [Sub_Tree])
-      end
+    {final_result_for_request,{Res,Root}}->
+      receiving_sub_trees(I - 1,List_Of_Sub_Trees ++ [{Res,Root}])
   end.
+
+make_tree(Input,Partners)->
+  %G = digraph:new(),
+  %[digraph:add_vertex(G, V) || V <- ([Input] ++ Partners)],
+  %[digraph:add_edge(G, Input, V) || V <- Partners],
+  %G.
+
+  [Input,Partners].
+
+merge_trees(Input,List_Of_Sub_Trees)->
+  [Input] ++ List_Of_Sub_Trees.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -220,20 +220,13 @@ index_of(Item, [_|Tl], Index) -> index_of(Item, Tl, Index+1).
 %tests:
 
 
-f()->
-  register(node(),self()),
-  P = spawn(fun()-> g() end),
-  X = node(),
-  io:format("in f ~p ~n",[X]),
-  L = receive
-        X->X
-      end,
-  io:format("Yesss ~p ~n",[L]).
+f(A,B)->
+  merge_trees(c,[A,B]).
 
-g()->
-  X = node(),
-  io:format("in g ~p ~n",[X]),
-  S = node(),
-  S!hello.
+g(1)->
+  make_tree(1,[2,3,4]);
+g(2)->
+  make_tree(11,[12,13,14]).
+
 
 
