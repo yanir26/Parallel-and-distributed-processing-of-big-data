@@ -18,22 +18,36 @@ start()->
   Number_Od_Workers = 4,
   register(main,self()),
   Server_Pid = spawn(fun() ->server(start,Number_Od_Workers,self()) end),
+  %%%%%%%test:
+  %Server = node(),
+  %Input = "Helmer Strik",
+  %[Server_Pid!node() || I <- [1,2,3,4]],
+  %Worker = for_which_worker(Input),
+  %Server_Pid!{local_request_with_input,Worker,self(),Input,1,[Input]},
+
+
+  %%%%%%
+
+  wait_until_workers_finish(Number_Od_Workers),
 
 
 
+  get_input_from_customer(Server_Pid).
+
+
+wait_until_workers_finish(0)->ok_continue_with_work;
+wait_until_workers_finish(I)->
   receive
-    X->X
-  end,
-  ok.
-  %X = get_input_from_customer(Server_Pid),
-  %X.
+    broadcast_finish_to_read_file->
+      wait_until_workers_finish(I - 1)
+  end.
 
 
 get_input_from_customer(Server_Pid)->
   Input = "Helmer Strik", %change
   Server = node(),
   Worker = for_which_worker(Input),
-  Server!{local_request_with_input,Worker,self(),Input,1,[Input]},
+  Server_Pid!{local_request_with_input,Worker,self(),Input,1,[Input]},
 
   Res = receive
           {final_result_for_request,{Answer,Root}}->Answer
@@ -50,7 +64,7 @@ for_which_worker(Element)->
     ((First_Letter >= 103) and (First_Letter =< 108))  -> worker2;%worker2 is responsible on letters g - l
     ((First_Letter >= 109) and (First_Letter =< 115))  -> worker3;%worker3 is responsible on letters m - s
     ((First_Letter >= 116) and (First_Letter =< 122))  ->worker4;%worker4 is  responsible on letters t - z
-    true -> error
+    true -> worker1
   end.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %server:
@@ -65,6 +79,8 @@ server(start,Number_Od_Workers,Main_Pid)->
 
 server(Worker1,Worker2,Worker3,Worker4)->
   receive
+    broadcast_finish_to_read_file->
+      main!broadcast_finish_to_read_file;
     {request_input,worker1,Source_Pid,Input}->
       {Worker1,Worker1}!{request_input,node(),Source_Pid,Input,0};
     {request_input,worker2,Source_Pid,Input}->
@@ -83,6 +99,7 @@ server(Worker1,Worker2,Worker3,Worker4)->
     {local_request_with_input,worker4,Source_Pid,Input,Depth,Fathers}->
       {Worker4,Worker4}!{incoming_input,node(),Source_Pid,Input,Depth,Fathers};
     {mission_accomplished,Source_Pid,{Res,Root}}->
+      io:format("Result = ~p ~n",[Res]),
       Source_Pid!{final_result_for_request,{Res,Root}}
 
   end,

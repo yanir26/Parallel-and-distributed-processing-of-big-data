@@ -30,8 +30,8 @@ start()->
   Structure = get_data_and_organized_it(Number_Of_Worker),
 
   %will wait to input to search
-  %Manage_Of_Requests_Pid = spawn(fun() -> manage_requests_fun(Structure,[]) end),
-  %register(manage_requests,Manage_Of_Requests_Pid),
+  Manage_Of_Requests_Pid = spawn(fun() -> manage_requests_fun(Structure,[]) end),
+  register(manage_requests,Manage_Of_Requests_Pid),
 
 
   Structure.
@@ -67,7 +67,8 @@ server(Worker1,Worker2,Worker3,Worker4,Master)->
       {Worker1,Worker1}!broadcast_finish_to_read_file,
       {Worker2,Worker2}!broadcast_finish_to_read_file,
       {Worker3,Worker3}!broadcast_finish_to_read_file,
-      {Worker4,Worker4}!broadcast_finish_to_read_file;
+      {Worker4,Worker4}!broadcast_finish_to_read_file,
+      {Master,Master}!broadcast_finish_to_read_file;
     broadcast_finish_to_read_file->
       main!organize_stop;
     {incoming_input,Source_Node,Source_Pid,Input,Depth,Fathers}->
@@ -133,7 +134,7 @@ for_which_worker(Element)->
     ((First_Letter >= 103) and (First_Letter =< 108))  -> worker2;%worker2 is responsible on letters g - l
     ((First_Letter >= 109) and (First_Letter =< 115))  -> worker3;%worker3 is responsible on letters m - s
     ((First_Letter >= 116) and (First_Letter =< 122))  ->worker4;%worker4 is  responsible on letters t - z
-    true -> error
+    true -> worker1
   end.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %This section will get the data from the former section and organized it in data structure;
@@ -170,16 +171,19 @@ manage_requests_fun(Structure,List_Of_Processes)->
   end.
 
 
-searcher(Structure,Source_Node,Source_Pid,Input,Depth,Fathers)->
+searcher(Structure,Source_Node,Source_Pid,Input,Depth,Fathers)->%maybe not found
   Server = node(),
   Partners = maps:get(Input,Structure,notfound),
-  Number_Of_Partners = length(Partners),
   if
+    Partners =:= notfound ->
+      io:format("not found in node = ~p , and input = ~p !n",[node(),Input]),
+      Server!{answer_for_request,Source_Node,Source_Pid,{notfound,Input}};
     Depth =:= 3 ->
       Res = make_tree(Input,Partners),
       Server!{answer_for_request,Source_Node,Source_Pid,{Res,Input}};
 
     true ->
+      Number_Of_Partners = length(Partners),
       List_Of_Relevant_Partners = [Server!{local_request_with_input,for_which_worker(Person),self(),Person,Depth + 1,Fathers ++ [Person]} || Person <- Partners,not(lists:member(Person,Fathers))],
       List_Of_Sub_Trees = receiving_sub_trees(length(List_Of_Relevant_Partners),[]), %list of [{Res,Root}] of all sub trees
       Res = merge_trees(Input,List_Of_Sub_Trees),
@@ -201,7 +205,7 @@ make_tree(Input,Partners)->
   %[digraph:add_edge(G, Input, V) || V <- Partners],
   %G.
 
-  [Input,Partners].
+  [Input] ++ Partners.
 
 merge_trees(Input,List_Of_Sub_Trees)->
   [Input] ++ List_Of_Sub_Trees.
