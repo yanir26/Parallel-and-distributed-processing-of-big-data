@@ -13,6 +13,8 @@
 %% API
 -export([start/0,f/2,g/1]).
 
+%part one work
+
 start()->
   Node_Of_Master = 'master@elioz-VirtualBox', %%%%change
   register(main,self()),
@@ -28,8 +30,8 @@ start()->
   Structure = get_data_and_organized_it(Number_Of_Worker),
 
   %will wait to input to search
-  Manage_Of_Requests_Pid = spawn(fun() -> manage_requests_fun(Structure,[]) end),
-  register(manage_requests,Manage_Of_Requests_Pid),
+  %Manage_Of_Requests_Pid = spawn(fun() -> manage_requests_fun(Structure,[]) end),
+  %register(manage_requests,Manage_Of_Requests_Pid),
 
 
   Structure.
@@ -103,6 +105,7 @@ construction_from_master()->
 %range4 : t - z
 
 read_file_and_send_the_data(MY_ID)->
+  io:format("Start reading ~n"),
   File =  csv_reader:main(["file" ++ [MY_ID + 48] ++ ".csv"]),  %Open the right file
   [work_on_line(X) || X <- File],
   %send to all stop

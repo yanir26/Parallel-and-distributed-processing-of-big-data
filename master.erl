@@ -12,26 +12,33 @@
 %% API
 -export([start/0,f/0]).
 
+%part one work
+
 start()->
   Number_Od_Workers = 4,
   register(main,self()),
-  Server_Pid = spawn(fun() ->server(start,Number_Od_Workers) end),
-
-  X = get_input_from_customer(),
-  X.
+  Server_Pid = spawn(fun() ->server(start,Number_Od_Workers,self()) end),
 
 
-get_input_from_customer()->
-  Input = "Bernd Finkemeyer", %change
+
+  receive
+    X->X
+  end,
+  ok.
+  %X = get_input_from_customer(Server_Pid),
+  %X.
+
+
+get_input_from_customer(Server_Pid)->
+  Input = "Helmer Strik", %change
   Server = node(),
   Worker = for_which_worker(Input),
   Server!{local_request_with_input,Worker,self(),Input,1,[Input]},
+
   Res = receive
           {final_result_for_request,{Answer,Root}}->Answer
         end,
   Res.
-
-%request
 
 
 first_letter(Element)->hd(string:lowercase(Element)). %Give the first letter in word, but only lowercase
@@ -47,7 +54,7 @@ for_which_worker(Element)->
   end.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %server:
-server(start,Number_Od_Workers)->
+server(start,Number_Od_Workers,Main_Pid)->
   register(node(),self()),
   List_Of_Nodes = get_nodes_from_workers(Number_Od_Workers,[],Number_Od_Workers),
   main!List_Of_Nodes,
@@ -69,6 +76,7 @@ server(Worker1,Worker2,Worker3,Worker4)->
     {local_request_with_input,worker1,Source_Pid,Input,Depth,Fathers}->
       {Worker1,Worker1}!{incoming_input,node(),Source_Pid,Input,Depth,Fathers};
     {local_request_with_input,worker2,Source_Pid,Input,Depth,Fathers}->
+      io:format("get this ~n"),
       {Worker2,Worker2}!{incoming_input,node(),Source_Pid,Input,Depth,Fathers};
     {local_request_with_input,worker3,Source_Pid,Input,Depth,Fathers}->
       {Worker3,Worker3}!{incoming_input,node(),Source_Pid,Input,Depth,Fathers};
@@ -111,15 +119,21 @@ index_of(Item, [_|Tl], Index) -> index_of(Item, Tl, Index+1).
 
 
 f()->
-  register(node(),self()),
   P = spawn(fun()-> g() end),
-  L = receive
-        X->X
-      end,
-  io:format("Yesss ~p ~n",[L]).
+  Server = node(),
+  Worker = worker2,
+  Input = 10,
+  register(x,self()),
+  P!{local_request_with_input},
+  ok.
+
 
 g()->
-  S = node(),
-  S!hello.
+  %register(x,self()),
+  receive
+    {local_request_with_input}->
+      io:format("yesss")
+
+  end.
 
 
