@@ -10,7 +10,7 @@
 -author("Elioz & Yanir").
 
 %% API
--export([start/0,f/0]).
+-export([start/0,f/1,replace/3]).
 
 %part one work
 
@@ -35,6 +35,7 @@ start()->
   get_input_from_customer(Server_Pid).
 
 
+
 wait_until_workers_finish(0)->ok_continue_with_work;
 wait_until_workers_finish(I)->
   receive
@@ -52,6 +53,10 @@ get_input_from_customer(Server_Pid)->
   Res = receive
           {final_result_for_request,{Answer,Root}}->Answer
         end,
+  graphviz:graph("G"),
+  [ graphviz:add_edge(master:replace(V1," ","_"), master:replace(V2," ","_")) || {V1,V2} <- Res],
+  graphviz:to_file("result.png", "png"),
+
   Res.
 
 
@@ -66,6 +71,12 @@ for_which_worker(Element)->
     ((First_Letter >= 116) and (First_Letter =< 122))  ->worker4;%worker4 is  responsible on letters t - z
     true -> worker1
   end.
+
+replace(String,Symbol,New_Symbol)-> replace(string:replace(String,Symbol,New_Symbol,all),[]).
+replace([],List)->List -- "." -- "," -- "(" -- ")" --":" -- ";";
+replace([H|T],List)-> replace(T,List ++ H).
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %server:
 server(start,Number_Od_Workers,Main_Pid)->
@@ -99,7 +110,7 @@ server(Worker1,Worker2,Worker3,Worker4)->
     {local_request_with_input,worker4,Source_Pid,Input,Depth,Fathers}->
       {Worker4,Worker4}!{incoming_input,node(),Source_Pid,Input,Depth,Fathers};
     {mission_accomplished,Source_Pid,{Res,Root}}->
-      io:format("Result = ~p ~n",[Res]),
+      %io:format("Result = ~p ~n",[Res]),
       Source_Pid!{final_result_for_request,{Res,Root}}
 
   end,
@@ -135,14 +146,13 @@ index_of(Item, [_|Tl], Index) -> index_of(Item, Tl, Index+1).
 %tests:
 
 
-f()->
-  P = spawn(fun()-> g() end),
-  Server = node(),
-  Worker = worker2,
-  Input = 10,
-  register(x,self()),
-  P!{local_request_with_input},
+f(Res)->
+  X = lists:flatten(Res),
+  graphviz:graph("G"),
+  [ graphviz:add_edge(master:replace(V1," ","_"), master:replace(V2," ","_")) || {V1,V2} <- X],
+  graphviz:to_file("Result.png", "png"),
   ok.
+
 
 
 g()->

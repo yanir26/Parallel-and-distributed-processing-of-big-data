@@ -11,7 +11,7 @@
 -author("Elioz & Yanir").
 
 %% API
--export([start/0,f/2,g/1]).
+-export([start/0,f/2,g/2]).
 
 %part one work
 
@@ -175,16 +175,18 @@ searcher(Structure,Source_Node,Source_Pid,Input,Depth,Fathers)->%maybe not found
   Server = node(),
   Partners = maps:get(Input,Structure,notfound),
   if
-    Partners =:= notfound ->
+    ((Partners =:= notfound) or (Partners =:= [])) ->
       io:format("not found in node = ~p , and input = ~p !n",[node(),Input]),
       Server!{answer_for_request,Source_Node,Source_Pid,{notfound,Input}};
     Depth =:= 3 ->
-      Res = make_tree(Input,Partners),
+      %Res = make_tree(Input,Partners),
+      List = [X || X <- Partners,not(lists:member(X,Fathers))],
+      Res = make_tree(Input,List),
       Server!{answer_for_request,Source_Node,Source_Pid,{Res,Input}};
 
     true ->
       Number_Of_Partners = length(Partners),
-      List_Of_Relevant_Partners = [Server!{local_request_with_input,for_which_worker(Person),self(),Person,Depth + 1,Fathers ++ [Person]} || Person <- Partners,not(lists:member(Person,Fathers))],
+      List_Of_Relevant_Partners = [Server!{local_request_with_input,for_which_worker(Person),self(),Person,Depth + 1,Fathers ++ [Person]  ++ Partners} || Person <- Partners,not(lists:member(Person,Fathers))],
       List_Of_Sub_Trees = receiving_sub_trees(length(List_Of_Relevant_Partners),[]), %list of [{Res,Root}] of all sub trees
       Res = merge_trees(Input,List_Of_Sub_Trees),
       Server!{answer_for_request,Source_Node,Source_Pid,{Res,Input}}
@@ -199,16 +201,30 @@ receiving_sub_trees(I,List_Of_Sub_Trees)->
       receiving_sub_trees(I - 1,List_Of_Sub_Trees ++ [{Res,Root}])
   end.
 
-make_tree(Input,Partners)->
+
+%%Partners  == [[[[V1,V2],[V1,V6]],root1],[[[[V3,V4]],root1]]]
+%%In a lower stage we send Partners  ==[[[],root1],[[],root2]] because we do not want the child of this stage.
+%%Edg == [] (when we call to the func).
+%%The output is list of edge:   [[a,b],[a,c]]
+mergeTree(_,[],Edg)-> Edg;
+
+mergeTree(Input,Partners,Edg)-> mergeTree(Input,tl(Partners),Edg++hd(hd(Partners))++[[Input,hd(tl(hd(Partners)))]]).
+
+
+make_tree(Input,Partners)-> % make list = G = [V,E] , where V is list of vertexes and E is list of edges {V1,V2}
+  [{Input,X} || X <- Partners].
   %G = digraph:new(),
   %[digraph:add_vertex(G, V) || V <- ([Input] ++ Partners)],
   %[digraph:add_edge(G, Input, V) || V <- Partners],
   %G.
 
-  [Input] ++ Partners.
+
 
 merge_trees(Input,List_Of_Sub_Trees)->
-  [Input] ++ List_Of_Sub_Trees.
+  Roots = [element(2,X) || X <- List_Of_Sub_Trees],
+  Result_Till_Now = [element(1,Y) || Y <- List_Of_Sub_Trees,element(1,Y) =/= notfound],
+  [{Input,Rooti} || Rooti <- Roots] ++ lists:merge(Result_Till_Now).
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -228,12 +244,10 @@ index_of(Item, [_|Tl], Index) -> index_of(Item, Tl, Index+1).
 
 
 f(A,B)->
-  merge_trees(c,[A,B]).
+  1.
 
-g(1)->
-  make_tree(1,[2,3,4]);
-g(2)->
-  make_tree(11,[12,13,14]).
+g(I,L)->
+  1.
 
 
 
