@@ -14,6 +14,8 @@
 %% API
 -export([start/0]).
 
+-include_lib("wx/include/wx.hrl").
+
 %% gen_server callbacks
 -export([init/1,
   handle_call/3,
@@ -39,7 +41,7 @@ start()->
 
   wait_until_workers_finish(Number_Of_Workers),
 
-  get_input_from_customer().
+  wxDisplay().
   %need to close all servers of nodes
 
 
@@ -51,8 +53,7 @@ wait_until_workers_finish(I)->
   end.
 
 
-get_input_from_customer()->
-  Input = "Helmer Strik", %change
+get_input_from_customer(Input)->
   Worker = for_which_worker(Input),
   gen_server:cast({?SERVER,?SERVER},{local_request_with_input,Worker,self(),Input,1,[Input]}),
 
@@ -62,7 +63,20 @@ get_input_from_customer()->
   graphviz:graph("G"),
   [ graphviz:add_edge(replace(V1," ","_"), replace(V2," ","_")) || {V1,V2} <- Res],
   graphviz:to_file("result.png", "png"),
+  os:cmd("xdg-open result.png"),
   Res.
+
+wxDisplay()->
+  Parent = wx:new(),
+  Frame = wxFrame:new(Parent,1,"Parallel and distributed processing of big data",[{pos,{500,500}},{size,{503,332}}]),
+  Background = wxImage:new("background.jpg",[]),
+  Bitmap = wxBitmap:new(wxImage:scale(Background, round(wxImage:getWidth(Background)), round(wxImage:getHeight(Background)), [{quality, ?wxIMAGE_QUALITY_HIGH}])),
+  wxStaticBitmap:new(Frame, ?wxID_ANY, Bitmap),
+  Button = wxButton:new(Frame,3,[{label,"Search"},{size,{50,50}},{pos,{230,50}}]),
+  Text = wxTextCtrl:new(Frame,60,[{pos,{160,120}},{size,{200,30}}]),
+  wxButton:connect(Button,command_button_clicked,[{callback,fun(_,_)->get_input_from_customer(wxTextCtrl:getLineText(Text,0))end}]),
+  wxFrame:show(Frame).
+
 
 
 first_letter(Element)->hd(string:lowercase(Element)). %Give the first letter in word, but only lowercase
