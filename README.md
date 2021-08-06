@@ -5,3 +5,5 @@ In this project we will use map reduce to analyze big data in parallel and distr
 Graphviz must be installed on the computers:
 
   %% sudo apt install graphviz %%
+
+For conversion xml to csv we used dblp-to-csv github
