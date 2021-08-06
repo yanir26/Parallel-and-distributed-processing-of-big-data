@@ -56,7 +56,7 @@ add_edge(Graph, NodeOne, NodeTwo) ->
    {GraphId, Type, GraphOptions, Nodes, Edges ++ [{NodeOne, NodeTwo}]}.
 
 to_dot(Graph, File) ->
-   {GraphId, Type, GraphOptions, Nodes, Edges} = Graph,
+   {GraphId, Type, _, Nodes, Edges} = Graph,
    {GraphType, EdgeType} = Type,
    
    % open file
@@ -87,7 +87,7 @@ to_dot(Graph, File) ->
    file:close(IODevice).
 
 to_file(Graph, File, Format) ->
-   {A1,A2,A3} = now(),
+   {A1,A2,A3} = erlang:timestamp(),
    DotFile = lists:concat([File, ".dot-", A1, "-", A2, "-", A3]),
    to_dot(Graph, DotFile),
    DotCommant = lists:concat(["dot -T", Format, " -o", File, " ", DotFile]),
