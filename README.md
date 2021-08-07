@@ -1,7 +1,4 @@
-![צילום מסך 2021-07-20 204554](https://user-images.githubusercontent.com/62119972/126371275-aa3b1d74-4406-4785-a6dc-882561544ed3.png)
-
-![M-R](https://user-images.githubusercontent.com/62119972/128590534-0a8361a6-8021-4783-abe5-c5da2573e556.png)
-
+![M-R](https://user-images.githubusercontent.com/62119972/128590576-f5e8bb49-d291-4580-bd0d-bec1258d74a0.png)
 
 # Parallel-and-distributed-processing-of-big-data
 
