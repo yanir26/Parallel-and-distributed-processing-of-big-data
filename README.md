@@ -18,12 +18,15 @@ Graphviz must be installed on the computers:
 
 In the master computer you need to write:
 
-```code ```
+```c(graphviz).
+c(master).
+master:start(NUMBER_OF_WORKER).```
 
 In the worker you need to write:
 
-```code ```
+```c(worker).
+worker:start('master@NODE').```
 
-# Credits
+# Credit
 
 For conversion xml to csv we used ```dblp-to-csv``` github.
