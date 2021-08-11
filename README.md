@@ -8,7 +8,7 @@ Link for Youtube video: www....
 
 
 # How to run
-**Installation 
+**Installation**
 
 Graphviz must be installed on the computers:
 
