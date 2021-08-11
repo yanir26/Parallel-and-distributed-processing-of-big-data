@@ -40,6 +40,8 @@ c(worker).
 worker:start('master@NODE').
 ```
 
+NODE - This is the address of the master computer. 
+
 # Credit
 
 For conversion xml to csv we used ```dblp-to-csv``` github.
