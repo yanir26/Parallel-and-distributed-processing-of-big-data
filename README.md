@@ -6,7 +6,7 @@ In this project we will use map reduce to analyze big data in parallel and distr
 
 This program analyze big data from www.dblp.org and create tree of the partners for the author that the user chooses. In addition this program displays a table of the number of surnames beginning with the same letter at each level in the tree.
 
-This program can handle with computers disconnect while processing
+This program can handle with computers disconnect while processing. 
 
 Link for Youtube video: www....
 
