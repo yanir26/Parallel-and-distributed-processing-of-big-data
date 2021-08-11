@@ -31,6 +31,7 @@ The progrem start after all the worker send keep-alive massage to the master com
 In the worker you need to write:
 
 ```
+c(csv_reader). 
 c(worker).
 worker:start('master@NODE').
 ```
