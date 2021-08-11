@@ -20,12 +20,12 @@ In the master computer you need to write:
 
 ```c(graphviz).
 c(master).
-master:start(NUMBER_OF_WORKER).```
+master:start(NUMBER_OF_WORKER) .```
 
 In the worker you need to write:
 
 ```c(worker).
-worker:start('master@NODE').```
+worker:start('master@NODE'). ```
 
 # Credit
 
