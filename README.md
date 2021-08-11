@@ -16,8 +16,11 @@ Graphviz must be installed on the computers:
 
 **example**
 In the master computer you need to write:
+
 ```code ```
+
 In the worker you need to write:
+
 ```code ```
 
 # Credits
