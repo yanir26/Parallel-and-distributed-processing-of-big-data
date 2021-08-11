@@ -87,8 +87,8 @@ get_input_from_customer(Input,Number_Of_Workers)->
     	io:format("finitoo ~n Res = ~p ~n",[Res]),
       graphviz:graph("G"),
       [ graphviz:add_edge(replace(V1," ","_"), replace(V2," ","_")) || {V1,V2} <- Res],
-      graphviz:to_file("result.png", "png"),
-      os:cmd("xdg-open result.png"),
+      graphviz:to_file(Input++".png", "png"),
+      os:cmd("xdg-open "++Input++".png"),
       gen_server:stop(?SERVER),
       main!kill,
       Res
