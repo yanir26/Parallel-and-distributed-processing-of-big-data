@@ -40,9 +40,9 @@
 % instruction = [Id,List_Of_Nodes,master_node]
 start(Number_Of_Workers)->
   register(main,self()),
-  new_start(Number_Of_Workers).
+  new_start(0,Number_Of_Workers).
 
-new_start(Number_Of_Workers)->
+new_start(I,Number_Of_Workers)->
   gen_server:start_link({local, node()}, ?MODULE, [Number_Of_Workers], []),
   spawn(fun() ->  keep_alive_fun() end), %keep alive
 
@@ -52,10 +52,10 @@ new_start(Number_Of_Workers)->
       io:format("waiting ~n"),
       receive
         kill -> ok;
-        {restart,New_Number_Of_Workers}->new_start(New_Number_Of_Workers)
+        {restart,New_Number_Of_Workers}->new_start(I + 1,New_Number_Of_Workers)
       end;
     New_Number_Of_Workers->
-      new_start(New_Number_Of_Workers)
+      new_start(I + 1,New_Number_Of_Workers)
   end.
 
 
@@ -139,10 +139,23 @@ keep_alive_fun(Number_Of_Workers,List_Of_Workers)->
   if
     Number_Of_Workers =:= New_Number_Of_Workers -> keep_alive_fun(Number_Of_Workers,List_Of_Workers);
     true ->
-      io:format("fail in keep alive , Number_Of_Workers = ~p ~n",[New_Number_Of_Workers]),
-      gen_server:cast(?SERVER,restart),
-      gen_server:stop(?SERVER),
-      main!{restart,New_Number_Of_Workers}
+    	%%%%
+      timer:sleep(round(?TIMER )),
+    	List1 = [ is_worker_alive(Worker) || Worker <- List_Of_Workers],
+  	  New_Number_Of_Workers1 = lists:sum(List1),
+      if
+        Number_Of_Workers =:= New_Number_Of_Workers1 -> keep_alive_fun(Number_Of_Workers,List_Of_Workers);
+        true->
+          io:format("fail in keep alive , Number_Of_Workers = ~p , List = ~p ~n",[New_Number_Of_Workers,List]),
+          gen_server:cast(?SERVER,restart),
+          gen_server:stop(?SERVER),
+          main!{restart,New_Number_Of_Workers}
+      end
+    	%%%%
+      %io:format("fail in keep alive , Number_Of_Workers = ~p , List = ~p ~n",[New_Number_Of_Workers,List]),
+      %gen_server:cast(?SERVER,restart),
+      %gen_server:stop(?SERVER),
+      %main!{restart,New_Number_Of_Workers}
   end.
 
 

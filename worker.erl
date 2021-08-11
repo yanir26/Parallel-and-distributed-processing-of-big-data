@@ -26,22 +26,13 @@
 
 -define(SERVER, node()).
 -define(NUMBER_OF_FILES,4).
+-define(DEPTH,4).
 
 -record(state, {}).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
-s() ->
-  [
-    try 4/X of
-      _->1
-    catch
-      error:_Error	-> 0;
-      exit:_Exit	->   0;
-      throw:_Throw->  0
-    end
-    || X <- [1,2,3,0,4]].
 %%%===================================================================
 %Our Code:
 start(Node_Of_Master)->
@@ -66,7 +57,7 @@ start(Node_Of_Master,I)->
       start(Node_Of_Master,I + 1);
     _->
       %will wait to input to search
-      Manage_Of_Requests_Pid = spawn(fun() -> manage_requests_fun(Structure,List_Of_Workers,[]) end),
+      Manage_Of_Requests_Pid = spawn(fun() -> manage_requests_fun(Structure,List_Of_Workers,[],maps:new()) end),
       register(manage_requests,Manage_Of_Requests_Pid),
 	io:format("waiting ~n"),
       receive
@@ -145,7 +136,7 @@ get_data_and_organized_it(Structure,I,Number_Of_Worker)->
       Old_Val = maps:get(Element,Structure,notfound),
       New_Structure = if
                         Old_Val =:= notfound -> maps:put(Element, Partners, Structure);
-                        true -> maps:put(Element, Old_Val ++ Partners, Structure)
+                        true -> maps:put(Element,remove_duplicate(Old_Val ++ Partners), Structure) %remove_duplicate(
                       end,
       get_data_and_organized_it(New_Structure,I,Number_Of_Worker);
     organize_stop->
@@ -160,11 +151,18 @@ get_data_and_organized_it(Structure,I,Number_Of_Worker)->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %This section will manage request for searching in the structure
-manage_requests_fun(Structure,List_Of_Workers,List_Of_Processes)->
+manage_requests_fun(Structure,List_Of_Workers,List_Of_Processes,History)->
   receive
     {new_request,Source_Node,Source_Pid,Input,Depth,Fathers}->
-      Pid = spawn(fun() -> searcher(Structure,List_Of_Workers,Source_Node,Source_Pid,Input,Depth,Fathers) end),
-      manage_requests_fun(Structure,List_Of_Workers,List_Of_Processes ++ [Pid]);
+      case maps:get(Input,History,notfound) of %maps:get(Input,History,notfound)
+        notfound ->
+          Pid = spawn(fun() -> searcher(Structure,List_Of_Workers,Source_Node,Source_Pid,Input,Depth,Fathers) end),
+          manage_requests_fun(Structure,List_Of_Workers,List_Of_Processes ++ [Pid],maps:put(Input, true, History));
+        _->
+          gen_server:cast({Source_Node,Source_Node},{mission_accomplished,Source_Pid,{ask_already,Input}}),
+          manage_requests_fun(Structure,List_Of_Workers,List_Of_Processes,History)
+
+      end;
     kill ->
       [ Pid!kill || Pid <- List_Of_Processes]
   end.
@@ -174,14 +172,15 @@ searcher(Structure,List_Of_Workers,Source_Node,Source_Pid,Input,Depth,Fathers)->
   Partners = maps:get(Input,Structure,notfound),
   if
     ((Partners =:= notfound) or (Partners =:= [])) ->
-      io:format("not found in node = ~p , and input = ~p !n",[node(),Input]),
+      io:format("not found in node = ~p , and input = ~p ~n",[node(),Input]),
       gen_server:cast({Source_Node,Source_Node},{mission_accomplished,Source_Pid,{notfound,Input}});
 
       %gen_server:cast({?SERVER,?SERVER},{answer_for_request,Source_Node,Source_Pid,{notfound,Input}});
-    Depth =:= 3 ->
-      List = [X || X <- Partners,not(lists:member(X,Fathers))],
-      Res = make_tree(Input,List),
-      gen_server:cast({Source_Node,Source_Node},{mission_accomplished,Source_Pid,{Res,Input}});
+    Depth =:= ?DEPTH ->
+      %List = [X || X <- Partners,not(lists:member(X,Fathers))],%delete
+      %Res = make_tree(Input,List),
+      %gen_server:cast({Source_Node,Source_Node},{mission_accomplished,Source_Pid,{Res,Input}});
+      gen_server:cast({Source_Node,Source_Node},{mission_accomplished,Source_Pid,{[],Input}});
 
       %gen_server:cast({?SERVER,?SERVER},{answer_for_request,Source_Node,Source_Pid,{Res,Input}});
     true ->
@@ -192,7 +191,7 @@ searcher(Structure,List_Of_Workers,Source_Node,Source_Pid,Input,Depth,Fathers)->
         List_Of_Sub_Trees =:= stopped -> stopped;
         true ->
           Res = merge_trees(Input,List_Of_Sub_Trees),
-          gen_server:cast({?SERVER,?SERVER},{answer_for_request,Source_Node,Source_Pid,{Res,Input}})
+          gen_server:cast({Source_Node,Source_Node},{mission_accomplished,Source_Pid,{Res,Input}})
       end
   end,
   finito.
@@ -201,6 +200,9 @@ searcher(Structure,List_Of_Workers,Source_Node,Source_Pid,Input,Depth,Fathers)->
 receiving_sub_trees(0,List_Of_Sub_Trees)->List_Of_Sub_Trees;
 receiving_sub_trees(I,List_Of_Sub_Trees)->
   receive
+    {final_result_for_request,{ask_already,Root}}->
+      io:format("get ask_already ~n"),
+      receiving_sub_trees(I - 1,List_Of_Sub_Trees);
     {final_result_for_request,{Res,Root}}->
       receiving_sub_trees(I - 1,List_Of_Sub_Trees ++ [{Res,Root}]);
     kill -> stopped
@@ -216,11 +218,17 @@ make_tree(Input,Partners)-> % make list = G = [V,E] , where V is list of vertexe
 
 merge_trees(Input,List_Of_Sub_Trees)->
   Roots = [element(2,X) || X <- List_Of_Sub_Trees],
-  Result_Till_Now = [element(1,Y) || Y <- List_Of_Sub_Trees,element(1,Y) =/= notfound],
+  Result_Till_Now = [element(1,Y) || Y <- List_Of_Sub_Trees,((element(1,Y) =/= notfound) and (element(1,Y) =/= ask_already))],
   [{Input,Rooti} || Rooti <- Roots] ++ lists:merge(Result_Till_Now).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %General functions:
+
+  remove_duplicate(List) ->
+    Set = sets:from_list(List),
+    sets:to_list(Set).
+    
+    
 send_message_to_proc_without_fail(Name,Message)->
   case whereis(Name) of
     undefined ->
@@ -234,6 +242,8 @@ send_message_to_proc_without_fail(Name,Message)->
         throw:_Throw->  ok
       end
   end.
+  
+ 
 
 %%End my code
 %%%===================================================================
@@ -282,6 +292,7 @@ init([Node_Of_Master]) ->
  % {reply, ok, State}.
 
 handle_call(ping, _From, State) ->
+	io:format("pong ~n"),
   {reply, pong, State};
 handle_call(construction_from_master, _From, [Node_Of_Master]) ->
   Result = gen_server:call({Node_Of_Master,Node_Of_Master},{ask_to_construction_from_master,node()},infinity),
@@ -352,6 +363,7 @@ handle_cast({local_request_with_input,worker4,Source_Pid,Input,Depth,Fathers},[W
   gen_server:cast({Worker4,Worker4},{incoming_input,node(),Source_Pid,Input,Depth,Fathers}),
   {noreply, [Worker1,Worker2,Worker3,Worker4,Master]};
 handle_cast(restart,State)->
+	io:format("get restart ~n"),
   {noreply, restart}.
 
 
