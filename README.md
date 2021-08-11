@@ -4,7 +4,7 @@
 
 In this project we will use map reduce to analyze big data in parallel and distributed systems with erlang.
 
-Thia program analyze big data from dblp.com and create tree of the pratners for the author that the user vote. 
+This program analyze big data from dblp.com and create tree of the pratners for the author that the user vote. 
 
 Link for Youtube video: www....
 
