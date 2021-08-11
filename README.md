@@ -7,12 +7,18 @@ In this project we will use map reduce to analyze big data in parallel and distr
 Link for Youtube video: www....
 
 
-# How to run
+# How to run the program
 **Installation**
 
 Graphviz must be installed on the computers:
 
 ```sudo apt install graphviz ```
+
+**example**
+In the master computer you need to write:
+```code ```
+In the worker you need to write:
+```code ```
 
 # Credits
 
