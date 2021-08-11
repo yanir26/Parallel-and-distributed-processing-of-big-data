@@ -15,6 +15,7 @@ Graphviz must be installed on the computers:
 ```sudo apt install graphviz ```
 
 **example**
+
 In the master computer you need to write:
 
 ```code ```
