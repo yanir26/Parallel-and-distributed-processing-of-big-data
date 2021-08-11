@@ -169,6 +169,17 @@ manage_requests_fun(Structure,List_Of_Workers,List_Of_Processes,History)->
   end.
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%This process get a request for creating and returning sub tree that rooted with input that the process get as argument.
+%%The process get more data like List_Of_Workers that contain the nodes of all workers
+%%and the source node ets as well.
+%%The process first check if the input is restore in the data strucrure. After that 
+%%the process check the depth, if it's the last one it return an empty sub tree with the root (itself), otherwise it 
+%%generate a new request for sub tree that rooted with every partner of the input that not apear already in the tree and send the request to the proper worker.
+%%After all sub trees arrived, it merge them to on tree and return the answer to the Source_Node.
+%%And so on it continue and work recursivly
+
+
 searcher(Structure,List_Of_Workers,Source_Node,Source_Pid,Input,Depth,Fathers)->%maybe not found
   Partners = maps:get(Input,Structure,notfound),
   if
