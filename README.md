@@ -4,6 +4,8 @@
 
 In this project we will use map reduce to analyze big data in parallel and distributed systems with erlang.
 
+Link for Youtube video: www....
+
 Graphviz must be installed on the computers:
 
 ```sudo apt install graphviz ```
