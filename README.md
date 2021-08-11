@@ -10,7 +10,7 @@ Link for Youtube video: www....
 # How to run the program
 **Installation**
 
-Graphviz must be installed on the computers:
+Graphviz must be installed on the master computer:
 
 ```sudo apt install graphviz ```
 
@@ -34,3 +34,5 @@ worker:start('master@NODE').
 # Credit
 
 For conversion xml to csv we used ```dblp-to-csv``` github.
+
+For creating the tree we used ```erlang-graphviz``` github.
