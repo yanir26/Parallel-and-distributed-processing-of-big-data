@@ -85,13 +85,14 @@ construction_from_master()->% delete
   Res.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%This section will read the proper file and divide the data between all proper processes:
-%range1 : a - f
-%range2 : g - l
-%range3 : m - s
-%range4 : t - z
+%%Every computer will be resnposible on range of letters in english.
+%%Every partition to ranges will determined by bucketing permotation that known by all workers and the master as well. 
+
+%%This section will read the proper file and divide the data between all proper node that rensposible on the proper range.
+%%In other words, every line the process update about the partnership all computers that need to know about it
 
 read_file_and_send_the_data(MY_ID,List_Of_Workers,Node_Of_Master)->
+  %%The process will reed the propiete
   io:format("Start reading ~n"),
   File =  csv_reader:main(["file" ++ [MY_ID + 48] ++ ".csv"]),  %Open the right file
   [work_on_line(X,List_Of_Workers) || X <- File],
