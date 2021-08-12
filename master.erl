@@ -8,11 +8,10 @@
 %%%-------------------------------------------------------------------
 -module(master).
 -author("Elioz & Yanir").
--compile(export_all).
 -behaviour(gen_server).
 
 %% API
--export([start/1]).
+-export([start/1,wxDisplay/1,keep_alive_fun/0]).
 
 -include_lib("wx/include/wx.hrl").
 %% gen_server callbacks
@@ -44,49 +43,6 @@ start(Number_Of_Workers)->
   ok.
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%delete
-start1(Number_Of_Workers)->
-  register(main,self()),
-  new_start(0,Number_Of_Workers).
-
-new_start(I,Number_Of_Workers)->
-  gen_server:start_link({local, node()}, ?MODULE, [Number_Of_Workers], []),
-  spawn(fun() ->  keep_alive_fun() end), %keep alive
-
-  case wait_until_workers_finish(?NUMBER_OF_FILES) of
-    ok_continue_with_work ->
-      wxDisplay(Number_Of_Workers),
-      io:format("waiting ~n"),
-      receive
-        kill -> ok;
-        {restart,New_Number_Of_Workers}->new_start(I + 1,New_Number_Of_Workers)
-      end;
-    New_Number_Of_Workers->
-      new_start(I + 1,New_Number_Of_Workers)
-  end.
-
-
-
-  %need to close all servers of nodes
-
-
-wait_until_workers_finish(0)->ok_continue_with_work;
-wait_until_workers_finish(I)->
-  receive
-    broadcast_finish_to_read_file->
-      wait_until_workers_finish(I - 1);
-    {restart,New_Number_Of_Workers}->
-      New_Number_Of_Workers
-  end.
-
-close_up()->
-	gen_server:stop(?SERVER),
-      	main!kill,
-	ok.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
 
 get_input_from_customer(Input,Number_Of_Workers)->
   gen_server:cast(?SERVER,new_mission),
@@ -100,15 +56,12 @@ get_input_from_customer(Input,Number_Of_Workers)->
     Res =:= notfound ->
      1;
     true->
-    	io:format("finitoo ~n Res = ~p ~n",[Res]),
       graphviz:graph("G"),
       [ graphviz:add_edge(replace(V1," ","_"), replace(V2," ","_")) || {V1,V2} <- Res],
       graphviz:to_file(replace(Input," ","_")++".png", "png"),
       makeTable(Input,Res),
-      os:cmd("xdg-open "++replace(Input," ","_")++".png"),
+      %os:cmd("xdg-open "++replace(Input," ","_")++".png"),
       graphviz:delete(),
-      %gen_server:stop(?SERVER),
-      %main!kill,
       Res
   end.
 
@@ -154,23 +107,20 @@ keep_alive_fun()->
 
 keep_alive_fun(Number_Of_Workers,List_Of_Workers)->
   timer:sleep(round(?TIMER )),
-  io:format("List_Of_Workers = ~p , Number_Of_Workers ~p ~n ",[List_Of_Workers,Number_Of_Workers]),
   List = [ is_worker_alive(Worker) || Worker <- List_Of_Workers],
   New_Number_Of_Workers = lists:sum(List),
   if
     Number_Of_Workers =:= New_Number_Of_Workers -> keep_alive_fun(Number_Of_Workers,List_Of_Workers);
     true ->
-    	%%%%
       timer:sleep(round(?TIMER )),
     	List1 = [ is_worker_alive(Worker) || Worker <- List_Of_Workers],
   	  New_Number_Of_Workers1 = lists:sum(List1),
       if
         Number_Of_Workers =:= New_Number_Of_Workers1 -> keep_alive_fun(Number_Of_Workers,List_Of_Workers);
         true->
-          io:format("fail in keep alive , Number_Of_Workers = ~p , List = ~p ~n",[New_Number_Of_Workers,List]),
+          io:format("Fail in keep alive , Number_Of_Workers = ~p , List = ~p ~n",[New_Number_Of_Workers,List]),
           gen_server:cast(?SERVER,restart),
           gen_server:stop(?SERVER),
-          %main!{restart,New_Number_Of_Workers} % delete
           gen_statem:cast(master_statem,{restart,New_Number_Of_Workers})
 
 
@@ -178,11 +128,6 @@ keep_alive_fun(Number_Of_Workers,List_Of_Workers)->
 
 
       end
-    	%%%%
-      %io:format("fail in keep alive , Number_Of_Workers = ~p , List = ~p ~n",[New_Number_Of_Workers,List]),
-      %gen_server:cast(?SERVER,restart),
-      %gen_server:stop(?SERVER),
-      %main!{restart,New_Number_Of_Workers}
   end.
 
 
@@ -191,7 +136,7 @@ is_worker_alive(Worker)->
   try gen_server:call({keep_alive_server,Worker},ping,?TIMER) of
     _->1
   catch
-    error:_Error	-> 0;
+    error:_Error -> 0;
     exit:_Exit	->   0;
     throw:_Throw->  0
   end.
@@ -262,7 +207,7 @@ handle_call({ask_to_construction_from_master,Node}, _From,[Number_Of_Workers,1,L
                          []
                      end,
   Result = [Responsibility,New_List_Of_Nodes,node()],
-  gen_server:reply(Keep_alive_Proc,New_List_Of_Nodes), %keep alive
+  gen_server:reply(Keep_alive_Proc,New_List_Of_Nodes),
   io:format("State = ~p ~n ",[New_List_Of_Nodes]),
   {reply, Result, New_List_Of_Nodes};
 handle_call({ask_to_construction_from_master,Node}, From,[Number_Of_Workers,I,List_Of_Nodes,Clients,Keep_alive_Proc])->
@@ -286,12 +231,10 @@ handle_call({ask_to_construction_from_master,Node}, From,[Number_Of_Workers,I,Li
 handle_cast({broadcast_node,Node}, [Number_Of_Workers,1,List_Of_Nodes])->
   New_List_Of_Nodes = List_Of_Nodes ++ [Node],
   [gen_server:cast({lists:nth(X,New_List_Of_Nodes),lists:nth(X,New_List_Of_Nodes)},{construction_from_master,[X,New_List_Of_Nodes,node()]}) || X <- lists:seq(1,Number_Of_Workers)],
-  io:format("State = ~p ~n ",[New_List_Of_Nodes]),
   {noreply, New_List_Of_Nodes};
 handle_cast({broadcast_node,Node}, [Number_Of_Workers,I,List_Of_Nodes])->
   {noreply, [Number_Of_Workers,I - 1,List_Of_Nodes ++ [Node]]};
 handle_cast(broadcast_finish_to_read_file,State)->
-  %main!broadcast_finish_to_read_file,
   gen_statem:cast(master_statem,broadcast_finish_to_read_file),
   {noreply, State};
 handle_cast({local_request_with_input,Index,Source_Pid,Input,Depth,Fathers},State)->
@@ -352,7 +295,7 @@ handle_info(_Info, State) ->
  % ok.
 
 terminate(_, State) ->
-  io:format("terminate master ,State = ~p ~n",[State]),
+  io:format("Terminate master ,State = ~p ~n",[State]),
    [
     try gen_server:stop({Worker,Worker}) of
      _->ok
@@ -384,7 +327,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 makeTable(Input,Edges)->
-io:format("!!!!makeTable!!!! ~n"),
   G = digraph:new(),
   buildTree(Edges,G),
   Ets = ets:new(tab,[set]),
