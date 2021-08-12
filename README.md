@@ -12,13 +12,6 @@ Link for Youtube video: www....
 
 
 # How to run the program
-**Installation**
-
-Graphviz must be installed on the master computer:
-
-```sudo apt install graphviz ```
-
-**example**
 For the work with more then one computer we need to write in all the computers:
 ```
 erl -name NAME@ADDRESS -setcookie dblp
