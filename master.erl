@@ -109,6 +109,7 @@ wxDisplay(Number_Of_Workers)->
   Background = wxImage:new("background.jpg",[]),
   Bitmap = wxBitmap:new(wxImage:scale(Background, round(wxImage:getWidth(Background)), round(wxImage:getHeight(Background)), [{quality, ?wxIMAGE_QUALITY_HIGH}])),
   wxStaticBitmap:new(Frame, ?wxID_ANY, Bitmap),
+  wxStaticText:new(Frame,2,"Write the author full name",[{pos,{170,100}}]),
   Button = wxButton:new(Frame,3,[{label,"Search"},{size,{50,50}},{pos,{230,50}}]),
   Text = wxTextCtrl:new(Frame,60,[{pos,{160,120}},{size,{200,30}}]),
   wxButton:connect(Button,command_button_clicked,[{callback,fun(_,_)->get_input_from_customer(wxTextCtrl:getLineText(Text,0),Number_Of_Workers)end}]),
