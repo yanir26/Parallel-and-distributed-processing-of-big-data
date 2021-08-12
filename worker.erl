@@ -55,7 +55,7 @@ start(Node_Of_Master,I)->
       start(Node_Of_Master,I + 1);
     _->
       %will wait to input to search
-      Manage_Of_Requests_Pid = spawn(fun() -> manage_requests_fun(Structure,List_Of_Workers,[],maps:new()) end),
+      Manage_Of_Requests_Pid = spawn(fun() -> manage_requests_fun(Structure,List_Of_Workers,[],maps:new(),Responsibilities) end),
       register(manage_requests,Manage_Of_Requests_Pid),
       receive
         kill -> Structure;
@@ -77,11 +77,13 @@ start(Node_Of_Master,I)->
 %%In other words, every line the process update about the partnership all computers that need to know about it
 
 read_file_and_send_the_data(MY_ID,List_Of_Workers,Node_Of_Master)->
+  T1 = erlang:timestamp(),
   io:format("Start reading ~n"),
   File =  csv_reader:main(["Part" ++ [MY_ID + 48] ++ ".csv"]),  %Open the right file
   [work_on_line(X,List_Of_Workers) || X <- File],
   [ gen_server:cast({Worker,Worker},broadcast_finish_to_read_file)|| Worker <- List_Of_Workers],
   gen_server:cast({Node_Of_Master,Node_Of_Master},broadcast_finish_to_read_file),
+  io:format("Runtime for reading the data  = ~p microseconds ~n",[timer:now_diff(erlang:timestamp(),T1)]),
   ok.
 
 work_on_line(Input,List_Of_Workers)->
@@ -125,18 +127,20 @@ get_data_and_organized_it(Structure,I,Number_Of_Worker)->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %This section will manage request for searching in the structure
-manage_requests_fun(Structure,List_Of_Workers,List_Of_Processes,History)->
+manage_requests_fun(Structure,List_Of_Workers,List_Of_Processes,History,Responsibilities)->
   receive
     new_mission->
-	manage_requests_fun(Structure,List_Of_Workers,List_Of_Processes,maps:new());
+        [ Pid!kill || Pid <- List_Of_Processes],
+	io:format("Number of processes = ~p ~n",[length(List_Of_Processes) +  length(Responsibilities) + 2]),
+	manage_requests_fun(Structure,List_Of_Workers,[],maps:new(),Responsibilities);
     {new_request,Source_Node,Source_Pid,Input,Depth,Fathers}->
       case maps:get(Input,History,notfound) of 
         notfound ->
           Pid = spawn(fun() -> searcher(Structure,List_Of_Workers,Source_Node,Source_Pid,Input,Depth,Fathers) end),
-          manage_requests_fun(Structure,List_Of_Workers,List_Of_Processes ++ [Pid],maps:put(Input, true, History));
+          manage_requests_fun(Structure,List_Of_Workers,List_Of_Processes ++ [Pid],maps:put(Input, true, History),Responsibilities);
         _->
           gen_server:cast({Source_Node,Source_Node},{mission_accomplished,Source_Pid,{ask_already,Input}}),
-          manage_requests_fun(Structure,List_Of_Workers,List_Of_Processes,History)
+          manage_requests_fun(Structure,List_Of_Workers,List_Of_Processes,History,Responsibilities)
 
       end;
     kill ->
@@ -198,12 +202,12 @@ merge_trees(Input,List_Of_Sub_Trees)->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %General functions:
 
-  remove_duplicate(List) ->
+ remove_duplicate(List) -> % This function removed all duplicates elements from the list
     Set = sets:from_list(List),
     sets:to_list(Set).
     
     
-send_message_to_proc_without_fail(Name,Message)->
+send_message_to_proc_without_fail(Name,Message)->	%The function is send message to process and cath any 
   case whereis(Name) of
     undefined ->
       ok;

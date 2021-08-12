@@ -45,6 +45,7 @@ start(Number_Of_Workers)->
 
 
 get_input_from_customer(Input,Number_Of_Workers)->
+  T1 = erlang:timestamp(),
   gen_server:cast(?SERVER,new_mission),
   Worker = for_which_worker(Input,Number_Of_Workers),
   gen_server:cast({?SERVER,?SERVER},{local_request_with_input,Worker,self(),Input,1,[Input]}),
@@ -60,6 +61,7 @@ get_input_from_customer(Input,Number_Of_Workers)->
       [ graphviz:add_edge(replace(V1," ","_"), replace(V2," ","_")) || {V1,V2} <- Res],
       graphviz:to_file(replace(Input," ","_")++".png", "png"),
       makeTable(Input,Res),
+      io:format("Runtime for creating a tree  = ~p microseconds ~n",[timer:now_diff(erlang:timestamp(),T1)]),
       %os:cmd("xdg-open "++replace(Input," ","_")++".png"),
       graphviz:delete(),
       Res
