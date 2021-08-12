@@ -25,7 +25,7 @@
 
 -define(SERVER, node()).
 -define(NUMBER_OF_FILES,4).
--define(TIMER,500).
+-define(TIMER,3000).
 -define(DEPTH,3).
 
 
@@ -95,7 +95,7 @@ get_input_from_customer(Input,Number_Of_Workers)->
       [ graphviz:add_edge(replace(V1," ","_"), replace(V2," ","_")) || {V1,V2} <- Res],
       graphviz:to_file(replace(Input," ","_")++".png", "png"),
       makeTable(Input,Res),
-      %os:cmd("xdg-open "++replace(Input," ","_")++".png"),
+      os:cmd("xdg-open "++replace(Input," ","_")++".png"),
       graphviz:delete(),
       %gen_server:stop(?SERVER),
       %main!kill,

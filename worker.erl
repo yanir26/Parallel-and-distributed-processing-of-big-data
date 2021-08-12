@@ -94,7 +94,7 @@ construction_from_master()->% delete
 
 read_file_and_send_the_data(MY_ID,List_Of_Workers,Node_Of_Master)->
   io:format("Start reading ~n"),
-  File =  csv_reader:main(["file" ++ [MY_ID + 48] ++ ".csv"]),  %Open the right file
+  File =  csv_reader:main(["Part" ++ [MY_ID + 48] ++ ".csv"]),  %Open the right file
   [work_on_line(X,List_Of_Workers) || X <- File],
   %send to all stop
   %gen_server:cast({?SERVER,?SERVER},local_finish_to_read_file),
@@ -103,7 +103,8 @@ read_file_and_send_the_data(MY_ID,List_Of_Workers,Node_Of_Master)->
   ok.
 
 work_on_line(Input,List_Of_Workers)->
-  Line = string:split(element(1,Input),"|",all),
+  %Line = string:split(element(2,Input),"|",all),
+   Line = string:split(lists:nth(2,string:split(element(1,Input),";",all)),"|",all),
   [gen_server:cast({for_which_worker(X,List_Of_Workers),for_which_worker(X,List_Of_Workers)},{remoteUpdate,X,Line -- [X]})|| X <- Line,X =/= []]. % all_permutations
   %[send_to_appropriate_worker(X,Line -- [X],List_Of_Workers)|| X <- Line,X =/= []]. % all_permutations
 %gen_server:cast({?SERVER,?SERVER},{localUpdate,for_which_worker(X),X,Line -- [X]})
