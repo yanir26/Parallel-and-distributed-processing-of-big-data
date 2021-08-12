@@ -37,7 +37,7 @@ In the worker you need to write:
 ```
 c(csv_reader). 
 c(worker).
-worker:start('master@NODE').
+worker:start('NODE').
 ```
 
 NODE - This is the address of the master computer. 
