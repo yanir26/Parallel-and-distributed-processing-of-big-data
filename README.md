@@ -12,7 +12,7 @@ Link for Youtube video: www....
 
 
 # How to run the program
-For the work with more then one computer we need to write in all the computers:
+**For the work with more then one computer we need to write in all the computers:**
 ```
 erl -name NAME@ADDRESS -setcookie dblp
 ```
@@ -21,7 +21,7 @@ ADDRESS - the ip of computer.
 
 NAME - set name for this computer.
 
-In the master computer you need to write:
+**In the master computer you need to write:**
 
 ```
 c(graphviz).
@@ -34,7 +34,7 @@ NUMBER_OF_WORKER - The code work with how many worker (computer) that the user w
 
 The progrem start after all the worker send keep-alive massage to the master computer. 
 
-In the worker you need to write:
+**In the worker you need to write:**
 
 ```
 c(csv_reader). 
