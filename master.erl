@@ -40,6 +40,12 @@
 
 % instruction = [Id,List_Of_Nodes,master_node]
 start(Number_Of_Workers)->
+  gen_statem:start_link({local, master_statem}, master_statem, [Number_Of_Workers], []),
+  ok.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%delete
+start1(Number_Of_Workers)->
   register(main,self()),
   new_start(0,Number_Of_Workers).
 
@@ -77,6 +83,10 @@ close_up()->
 	gen_server:stop(?SERVER),
       	main!kill,
 	ok.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
 
 get_input_from_customer(Input,Number_Of_Workers)->
   gen_server:cast(?SERVER,new_mission),
@@ -113,8 +123,7 @@ wxDisplay(Number_Of_Workers)->
   Button = wxButton:new(Frame,3,[{label,"Search"},{size,{50,50}},{pos,{230,50}}]),
   Text = wxTextCtrl:new(Frame,60,[{pos,{160,120}},{size,{200,30}}]),
   wxButton:connect(Button,command_button_clicked,[{callback,fun(_,_)->get_input_from_customer(wxTextCtrl:getLineText(Text,0),Number_Of_Workers)end}]),
-  wxButton:connect(Frame,close_window,[{callback,fun(_,_)->gen_server:stop(?SERVER),main!kill,wxFrame:destroy(Frame) end}]),
-
+  wxButton:connect(Frame,close_window,[{callback,fun(_,_)->gen_server:stop(?SERVER),gen_statem:cast(master_statem,kill),wxFrame:destroy(Frame) end}]),
   wxFrame:show(Frame).
 
 
@@ -160,7 +169,8 @@ keep_alive_fun(Number_Of_Workers,List_Of_Workers)->
           io:format("fail in keep alive , Number_Of_Workers = ~p , List = ~p ~n",[New_Number_Of_Workers,List]),
           gen_server:cast(?SERVER,restart),
           gen_server:stop(?SERVER),
-          main!{restart,New_Number_Of_Workers}
+          %main!{restart,New_Number_Of_Workers} % delete
+          gen_statem:cast(master_statem,{restart,New_Number_Of_Workers})
 
 
 
@@ -280,7 +290,8 @@ handle_cast({broadcast_node,Node}, [Number_Of_Workers,1,List_Of_Nodes])->
 handle_cast({broadcast_node,Node}, [Number_Of_Workers,I,List_Of_Nodes])->
   {noreply, [Number_Of_Workers,I - 1,List_Of_Nodes ++ [Node]]};
 handle_cast(broadcast_finish_to_read_file,State)->
-  main!broadcast_finish_to_read_file,
+  %main!broadcast_finish_to_read_file,
+  gen_statem:cast(master_statem,broadcast_finish_to_read_file),
   {noreply, State};
 handle_cast({local_request_with_input,Index,Source_Pid,Input,Depth,Fathers},State)->
   Worker = lists:nth(Index,State),
