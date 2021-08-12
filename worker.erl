@@ -13,6 +13,7 @@
 
 %% API
 -export([start/1]).
+-include_lib("wx/include/wx.hrl").
 
 -compile(export_all).%delete
 
@@ -26,7 +27,7 @@
 
 -define(SERVER, node()).
 -define(NUMBER_OF_FILES,4).
--define(DEPTH,4).
+-define(DEPTH,3).
 
 -record(state, {}).
 
@@ -57,7 +58,7 @@ start(Node_Of_Master,I)->
       start(Node_Of_Master,I + 1);
     _->
       %will wait to input to search
-      Manage_Of_Requests_Pid = spawn(fun() -> manage_requests_fun(Structure,List_Of_Workers,[],maps:new()) end),
+      Manage_Of_Requests_Pid = spawn(fun() -> manage_requests_fun(Structure,List_Of_Workers,Node_Of_Master,[],maps:new()) end),
       register(manage_requests,Manage_Of_Requests_Pid),
 	io:format("waiting ~n"),
       receive
@@ -92,7 +93,6 @@ construction_from_master()->% delete
 %%In other words, every line the process update about the partnership all computers that need to know about it
 
 read_file_and_send_the_data(MY_ID,List_Of_Workers,Node_Of_Master)->
-  %%The process will reed the propiete
   io:format("Start reading ~n"),
   File =  csv_reader:main(["file" ++ [MY_ID + 48] ++ ".csv"]),  %Open the right file
   [work_on_line(X,List_Of_Workers) || X <- File],
@@ -103,7 +103,7 @@ read_file_and_send_the_data(MY_ID,List_Of_Workers,Node_Of_Master)->
   ok.
 
 work_on_line(Input,List_Of_Workers)->
-  Line = string:split(element(2,Input),"|",all),
+  Line = string:split(element(1,Input),"|",all),
   [gen_server:cast({for_which_worker(X,List_Of_Workers),for_which_worker(X,List_Of_Workers)},{remoteUpdate,X,Line -- [X]})|| X <- Line,X =/= []]. % all_permutations
   %[send_to_appropriate_worker(X,Line -- [X],List_Of_Workers)|| X <- Line,X =/= []]. % all_permutations
 %gen_server:cast({?SERVER,?SERVER},{localUpdate,for_which_worker(X),X,Line -- [X]})
@@ -152,16 +152,18 @@ get_data_and_organized_it(Structure,I,Number_Of_Worker)->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %This section will manage request for searching in the structure
-manage_requests_fun(Structure,List_Of_Workers,List_Of_Processes,History)->
+manage_requests_fun(Structure,List_Of_Workers,Node_Of_Master,List_Of_Processes,History)->
   receive
+    new_mission->
+	manage_requests_fun(Structure,List_Of_Workers,Node_Of_Master,List_Of_Processes,maps:new());
     {new_request,Source_Node,Source_Pid,Input,Depth,Fathers}->
       case maps:get(Input,History,notfound) of %maps:get(Input,History,notfound)
         notfound ->
-          Pid = spawn(fun() -> searcher(Structure,List_Of_Workers,Source_Node,Source_Pid,Input,Depth,Fathers) end),
-          manage_requests_fun(Structure,List_Of_Workers,List_Of_Processes ++ [Pid],maps:put(Input, true, History));
+          Pid = spawn(fun() -> searcher(Structure,List_Of_Workers,Source_Node,Source_Pid,Input,Depth,Fathers,Node_Of_Master) end),
+          manage_requests_fun(Structure,List_Of_Workers,Node_Of_Master,List_Of_Processes ++ [Pid],maps:put(Input, true, History));
         _->
           gen_server:cast({Source_Node,Source_Node},{mission_accomplished,Source_Pid,{ask_already,Input}}),
-          manage_requests_fun(Structure,List_Of_Workers,List_Of_Processes,History)
+          manage_requests_fun(Structure,List_Of_Workers,Node_Of_Master,List_Of_Processes,History)
 
       end;
     kill ->
@@ -179,8 +181,7 @@ manage_requests_fun(Structure,List_Of_Workers,List_Of_Processes,History)->
 %%After all sub trees arrived, it merge them to on tree and return the answer to the Source_Node.
 %%And so on it continue and work recursivly
 
-
-searcher(Structure,List_Of_Workers,Source_Node,Source_Pid,Input,Depth,Fathers)->%maybe not found
+searcher(Structure,List_Of_Workers,Source_Node,Source_Pid,Input,Depth,Fathers,Node_Of_Master)->%maybe not found
   Partners = maps:get(Input,Structure,notfound),
   if
     ((Partners =:= notfound) or (Partners =:= [])) ->
@@ -188,7 +189,7 @@ searcher(Structure,List_Of_Workers,Source_Node,Source_Pid,Input,Depth,Fathers)->
       gen_server:cast({Source_Node,Source_Node},{mission_accomplished,Source_Pid,{notfound,Input}});
 
       %gen_server:cast({?SERVER,?SERVER},{answer_for_request,Source_Node,Source_Pid,{notfound,Input}});
-    Depth =:= ?DEPTH ->
+    Depth =:= ?DEPTH + 1 ->
       %List = [X || X <- Partners,not(lists:member(X,Fathers))],%delete
       %Res = make_tree(Input,List),
       %gen_server:cast({Source_Node,Source_Node},{mission_accomplished,Source_Pid,{Res,Input}});
@@ -201,6 +202,10 @@ searcher(Structure,List_Of_Workers,Source_Node,Source_Pid,Input,Depth,Fathers)->
       List_Of_Sub_Trees = receiving_sub_trees(length(List_Of_Relevant_Partners),[]), %list of [{Res,Root}] of all sub trees
       if
         List_Of_Sub_Trees =:= stopped -> stopped;
+	%Source_Node =:= Node_Of_Master ->
+         %  Res = merge_trees(Input,List_Of_Sub_Trees),
+          %gen_server:cast({Source_Node,Source_Node},{mission_accomplished,Source_Pid,{Res,Input}}),
+	  %makeTable(Input,Res);
         true ->
           Res = merge_trees(Input,List_Of_Sub_Trees),
           gen_server:cast({Source_Node,Source_Node},{mission_accomplished,Source_Pid,{Res,Input}})
@@ -374,6 +379,9 @@ handle_cast({local_request_with_input,worker3,Source_Pid,Input,Depth,Fathers},[W
 handle_cast({local_request_with_input,worker4,Source_Pid,Input,Depth,Fathers},[Worker1,Worker2,Worker3,Worker4,Master])->%delete
   gen_server:cast({Worker4,Worker4},{incoming_input,node(),Source_Pid,Input,Depth,Fathers}),
   {noreply, [Worker1,Worker2,Worker3,Worker4,Master]};
+handle_cast(new_mission,State)->
+	manage_requests!new_mission,
+	{noreply, State};
 handle_cast(restart,State)->
 	io:format("get restart ~n"),
   {noreply, restart}.
@@ -455,3 +463,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

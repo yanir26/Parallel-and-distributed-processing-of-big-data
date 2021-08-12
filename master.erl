@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(master).
 -author("Elioz & Yanir").
-
+-compile(export_all).
 -behaviour(gen_server).
 
 %% API
@@ -26,6 +26,7 @@
 -define(SERVER, node()).
 -define(NUMBER_OF_FILES,4).
 -define(TIMER,500).
+-define(DEPTH,3).
 
 
 
@@ -72,8 +73,13 @@ wait_until_workers_finish(I)->
       New_Number_Of_Workers
   end.
 
+close_up()->
+	gen_server:stop(?SERVER),
+      	main!kill,
+	ok.
 
 get_input_from_customer(Input,Number_Of_Workers)->
+  gen_server:cast(?SERVER,new_mission),
   Worker = for_which_worker(Input,Number_Of_Workers),
   gen_server:cast({?SERVER,?SERVER},{local_request_with_input,Worker,self(),Input,1,[Input]}),
 
@@ -82,15 +88,17 @@ get_input_from_customer(Input,Number_Of_Workers)->
         end,
   if
     Res =:= notfound ->
-      wxDisplay(Number_Of_Workers);
+     1;
     true->
     	io:format("finitoo ~n Res = ~p ~n",[Res]),
       graphviz:graph("G"),
       [ graphviz:add_edge(replace(V1," ","_"), replace(V2," ","_")) || {V1,V2} <- Res],
-      graphviz:to_file(Input++".png", "png"),
-      os:cmd("xdg-open "++Input++".png"),
-      gen_server:stop(?SERVER),
-      main!kill,
+      graphviz:to_file(replace(Input," ","_")++".png", "png"),
+      makeTable(Input,Res),
+      %os:cmd("xdg-open "++replace(Input," ","_")++".png"),
+      graphviz:delete(),
+      %gen_server:stop(?SERVER),
+      %main!kill,
       Res
   end.
 
@@ -104,6 +112,8 @@ wxDisplay(Number_Of_Workers)->
   Button = wxButton:new(Frame,3,[{label,"Search"},{size,{50,50}},{pos,{230,50}}]),
   Text = wxTextCtrl:new(Frame,60,[{pos,{160,120}},{size,{200,30}}]),
   wxButton:connect(Button,command_button_clicked,[{callback,fun(_,_)->get_input_from_customer(wxTextCtrl:getLineText(Text,0),Number_Of_Workers)end}]),
+  wxButton:connect(Frame,close_window,[{callback,fun(_,_)->gen_server:stop(?SERVER),main!kill,wxFrame:destroy(Frame) end}]),
+
   wxFrame:show(Frame).
 
 
@@ -150,6 +160,11 @@ keep_alive_fun(Number_Of_Workers,List_Of_Workers)->
           gen_server:cast(?SERVER,restart),
           gen_server:stop(?SERVER),
           main!{restart,New_Number_Of_Workers}
+
+
+
+
+
       end
     	%%%%
       %io:format("fail in keep alive , Number_Of_Workers = ~p , List = ~p ~n",[New_Number_Of_Workers,List]),
@@ -273,6 +288,9 @@ handle_cast({local_request_with_input,Index,Source_Pid,Input,Depth,Fathers},Stat
 handle_cast({mission_accomplished,Source_Pid,{Res,Root}},State)->
   Source_Pid!{final_result_for_request,{Res,Root}},
   {noreply, State};
+handle_cast(new_mission,State)->
+	[gen_server:cast({Worker,Worker},new_mission) || Worker <-State ],
+	{noreply, State};
 handle_cast(restart,State)->
   [
     try gen_server:cast({Worker,Worker},restart) of
@@ -349,3 +367,67 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+makeTable(Input,Edges)->
+io:format("!!!!makeTable!!!! ~n"),
+  G = digraph:new(),
+  buildTree(Edges,G),
+  Ets = ets:new(tab,[set]),
+  buildEts(Ets,1),
+  updateEts(G,1,[Input],Input,Ets),
+  Parent = wx:new(),
+  Frame1 = wxFrame:new(Parent,1,"Table",[{pos,{500,500}},{size,{400,720}}]),
+  Grid = wxGrid:new(Frame1,2,[]),
+  wxGrid:createGrid(Grid,26,?DEPTH),
+  setCol(Grid,0),
+  setRow(Grid,0,["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"]),
+  setCell(Ets,Grid,0,1),
+
+  wxFrame:show(Frame1).
+
+setCell(_,_,_,?DEPTH+1)->ok;
+setCell(Ets,Grid,26,Col)->setCell(Ets,Grid,0,Col+1);
+setCell(Ets,Grid,Row,Col)->
+  Letter = {"a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"},
+  wxGrid:setCellValue(Grid,Row,Col-1,integer_to_list(element(2,hd(ets:lookup(Ets,{element(Row+1,Letter),Col}))))),
+  setCell(Ets,Grid,Row+1,Col).
+
+setCol(_,?DEPTH)->ok;
+setCol(Grid,Dep)->
+  wxGrid:setColLabelValue(Grid,Dep,"Depth " ++ integer_to_list(Dep+1)),
+  setCol(Grid,Dep+1).
+
+
+setRow(_,_,[])->ok;
+setRow(Grid,Row,List)->
+  wxGrid:setRowLabelValue(Grid,Row,hd(List)),
+  setRow(Grid,Row+1,tl(List)).
+
+
+updateEts(_,5,_,_,Ets)->Ets;
+updateEts(G,Level,List,Root,Ets)->
+  Neighbors = digraph:out_neighbours(G,Root)++digraph:in_neighbours(G,Root)--List,
+  [ets:update_counter(Ets,{string:lowercase(string:slice(A,0,1)),Level},{2,1})||A<-Neighbors],
+  [updateEts(G,Level+1,List++Neighbors,B,Ets)||B<-(Neighbors--List)].
+
+
+buildEts(_,5)->ok;
+buildEts(Ets,Level)->
+  [ets:insert(Ets,{{A,Level},0})||A<-["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"]],
+  buildEts(Ets,Level+1).
+
+%%The func get a list of edge and build digraph:
+buildTree(Edg,build)->
+  G = digraph:new(),
+  buildTree(Edg,G);
+
+buildTree([],G)->G;
+
+buildTree(Edg,G)->
+  digraph:add_vertex(G,element(1,hd(Edg))),
+  digraph:add_vertex(G,element(2,hd(Edg))),
+  digraph:add_edge(G,element(1,hd(Edg)),element(2,hd(Edg))),
+  buildTree(tl(Edg),G).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
