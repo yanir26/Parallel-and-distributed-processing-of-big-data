@@ -19,11 +19,16 @@ Graphviz must be installed on the master computer:
 ```sudo apt install graphviz ```
 
 **example**
+For the work with more then one computer we need to write in all the computers:
+```
+erl -name NAME@ADDRESS -setcookie dblp
+```
 
 In the master computer you need to write:
 
 ```
 c(graphviz).
+c(master_statem).
 c(master).
 master:start(NUMBER_OF_WORKER).
 ```
