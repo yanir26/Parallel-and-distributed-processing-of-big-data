@@ -438,10 +438,10 @@ terminate(_Reason, restart) ->
   ok;
 terminate(_Reason, _State) ->
   io:format("terminate server ~n"),
-  %send_message_to_proc_without_fail(manage_requests,kill),
-  manage_requests!kill,
-  %send_message_to_proc_without_fail(main,kill),
-  main!kill,
+  send_message_to_proc_without_fail(manage_requests,kill),
+  %manage_requests!kill,
+  send_message_to_proc_without_fail(main,kill),
+  %main!kill,
   gen_server:stop(keep_alive_server), %keep alive
   io:format("server stopped ~n"),
   ok.
