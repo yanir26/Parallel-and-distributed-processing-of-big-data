@@ -18,6 +18,7 @@ erl -name NAME@ADDRESS -setcookie dblp
 ```
 
 ADDRESS - the ip of computer.
+
 NAME - set name for this computer.
 
 In the master computer you need to write:
