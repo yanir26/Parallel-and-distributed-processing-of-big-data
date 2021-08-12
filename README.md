@@ -8,7 +8,7 @@ This program analyze big data from www.dblp.org and create tree of the partners 
 
 This program can handle with computers disconnect while processing. 
 
-Link for Youtube video: www....
+Link for Youtube video: https://www.youtube.com/watch?v=7HWlEaO4jUk
 
 
 # How to run the program
