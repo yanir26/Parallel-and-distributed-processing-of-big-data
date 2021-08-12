@@ -17,6 +17,9 @@ For the work with more then one computer we need to write in all the computers:
 erl -name NAME@ADDRESS -setcookie dblp
 ```
 
+ADDRESS - the ip of computer.
+NAME - set name for this computer.
+
 In the master computer you need to write:
 
 ```
