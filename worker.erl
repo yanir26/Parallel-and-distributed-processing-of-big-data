@@ -131,7 +131,10 @@ manage_requests_fun(Structure,List_Of_Workers,List_Of_Processes,History,Responsi
   receive
     new_mission->
         [ Pid!kill || Pid <- List_Of_Processes],
-	io:format("Number of processes = ~p ~n",[length(List_Of_Processes) +  length(Responsibilities) + 2]),
+	if 
+	  List_Of_Processes =/= [] -> io:format("Number of processes = ~p ~n",[length(List_Of_Processes) +  length(Responsibilities) + 2]);
+	  true -> ok
+	end,
 	manage_requests_fun(Structure,List_Of_Workers,[],maps:new(),Responsibilities);
     {new_request,Source_Node,Source_Pid,Input,Depth,Fathers}->
       case maps:get(Input,History,notfound) of 
@@ -144,6 +147,7 @@ manage_requests_fun(Structure,List_Of_Workers,List_Of_Processes,History,Responsi
 
       end;
     kill ->
+      io:format("Number of processes = ~p ~n",[length(List_Of_Processes) +  length(Responsibilities) + 2]),
       [ Pid!kill || Pid <- List_Of_Processes]
   end.
 
