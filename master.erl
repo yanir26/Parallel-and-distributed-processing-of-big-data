@@ -150,6 +150,7 @@ is_worker_alive(Worker)->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %End our code:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%The server will almost only pass messages to the node's processes. It happend in order to avoid the battleneck that can happen. In other words the server doesn't do a difficult missions.
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
