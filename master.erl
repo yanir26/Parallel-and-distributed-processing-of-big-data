@@ -123,7 +123,9 @@ keep_alive_fun(Number_Of_Workers,List_Of_Workers)->
         Number_Of_Workers =:= New_Number_Of_Workers1 -> keep_alive_fun(Number_Of_Workers,List_Of_Workers);
         true->
           io:format("Fail in keep alive , Number_Of_Workers = ~p , List = ~p ~n",[New_Number_Of_Workers,List]),
-          gen_server:cast(?SERVER,restart),
+	  Index = index_of(0,List),
+	  Down_Worker = lists:nth(Index,List_Of_Workers),
+          gen_server:cast(?SERVER,{restart,Down_Worker}),
           gen_server:stop(?SERVER),
           gen_statem:cast(master_statem,{restart,New_Number_Of_Workers})
 
@@ -144,6 +146,12 @@ is_worker_alive(Worker)->
     exit:_Exit	->   0;
     throw:_Throw->  0
   end.
+
+index_of(Item, List) -> index_of(Item, List, 1).
+
+index_of(_, [], _)  -> not_found;
+index_of(Item, [Item|_], Index) -> Index;
+index_of(Item, [_|Tl], Index) -> index_of(Item, Tl, Index+1).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -243,7 +251,11 @@ handle_cast(broadcast_finish_to_read_file,State)->
   gen_statem:cast(master_statem,broadcast_finish_to_read_file),
   {noreply, State};
 handle_cast({local_request_with_input,Index,Source_Pid,Input,Depth,Fathers},State)->
-  Worker = lists:nth(Index,State),
+  New_Index =   if
+		    Index > length(State) -> length(State);
+		    true -> Index
+		  end,
+  Worker = lists:nth(New_Index,State),
   gen_server:cast({Worker,Worker},{incoming_input,node(),Source_Pid,Input,Depth,Fathers}),
   {noreply, State};
 handle_cast({mission_accomplished,Source_Pid,{Res,Root}},State)->
@@ -252,16 +264,18 @@ handle_cast({mission_accomplished,Source_Pid,{Res,Root}},State)->
 handle_cast(new_mission,State)->
 	[gen_server:cast({Worker,Worker},new_mission) || Worker <-State ],
 	{noreply, State};
-handle_cast(restart,State)->
-  [
-    try gen_server:cast({Worker,Worker},restart) of
-      _->ok
-    catch
-      error:_Error	-> ok;
-      exit:_Exit	->   ok;
-      throw:_Throw->  ok
-    end
-    || Worker <- State],
+handle_cast({restart,Down_Worker},State)->
+  %[
+   % try gen_server:cast({Worker,Worker},restart) of
+   %   _->ok
+    %catch
+     % error:_Error	-> ok;
+      %exit:_Exit	->   ok;
+     % throw:_Throw->  ok
+    %end
+    %|| Worker <- State],
+
+  [ gen_server:cast({Worker,Worker},restart) || Worker <- State,Worker =/=Down_Worker  ],
   {noreply, State}.
 
 
