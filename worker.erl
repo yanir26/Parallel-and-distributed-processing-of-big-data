@@ -39,18 +39,18 @@ start(Node_Of_Master)->
   register(main,self()),
   start(Node_Of_Master,0).
 start(Node_Of_Master,I)->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, [Node_Of_Master], []),
-  gen_server:start_link({local, keep_alive_server}, ?MODULE, [keep_alive_server], []), %keep alive
-  List_Of_Command_From_Master = gen_server:call(?SERVER,construction_from_master,infinity),
-  Responsibilities = lists:nth(1,List_Of_Command_From_Master),
-  List_Of_Workers = lists:nth(2,List_Of_Command_From_Master),
+  gen_server:start_link({local, ?SERVER}, ?MODULE, [Node_Of_Master], []),	%Start a gen server
+  gen_server:start_link({local, keep_alive_server}, ?MODULE, [keep_alive_server], []), %Start keep alive server
+  List_Of_Command_From_Master = gen_server:call(?SERVER,construction_from_master,infinity),% This line are get commands from the master, List_Of_Command_From_Master = [Responsibilities,List_Of_Workers,Master node]
+  Responsibilities = lists:nth(1,List_Of_Command_From_Master),	%Take responsibilities
+  List_Of_Workers = lists:nth(2,List_Of_Command_From_Master),	%Take List_Of_Workers
   Number_Of_Worker = length(List_Of_Workers),
   io:format("List_Of_Workers = ~p ~n Number_Of_Worker = ~p ~n",[List_Of_Workers,Number_Of_Worker]),
 
-  [ spawn(fun() -> read_file_and_send_the_data(Id,List_Of_Workers,Node_Of_Master) end) || Id <- Responsibilities],
-  {What,Structure} = get_data_and_organized_it(?NUMBER_OF_FILES),
+  [ spawn(fun() -> read_file_and_send_the_data(Id,List_Of_Workers,Node_Of_Master) end) || Id <- Responsibilities],%Open process that read file for every Responsibility
+  {What,Structure} = get_data_and_organized_it(?NUMBER_OF_FILES),	%Here we call the function from section that orgenized the data
   case What of
-    restart->
+    restart->		%what if we get restart, it's mean that one of the computers was down 
       timer:sleep(1000),
       start(Node_Of_Master,I + 1);
     _->
@@ -184,7 +184,7 @@ searcher(Structure,List_Of_Workers,Source_Node,Source_Pid,Input,Depth,Fathers)->
   finito.
 
 
-receiving_sub_trees(0,List_Of_Sub_Trees)->List_Of_Sub_Trees;
+receiving_sub_trees(0,List_Of_Sub_Trees)->List_Of_Sub_Trees; % That function wait until all answers of subtrees was arrived
 receiving_sub_trees(I,List_Of_Sub_Trees)->
   receive
     {final_result_for_request,{ask_already,_}}->
@@ -198,7 +198,7 @@ receiving_sub_trees(I,List_Of_Sub_Trees)->
 
 
 
-merge_trees(Input,List_Of_Sub_Trees)->
+merge_trees(Input,List_Of_Sub_Trees)->	%That function merge all sub trees
   Roots = [element(2,X) || X <- List_Of_Sub_Trees],
   Result_Till_Now = [element(1,Y) || Y <- List_Of_Sub_Trees,((element(1,Y) =/= notfound) and (element(1,Y) =/= ask_already))],
   [{Input,Rooti} || Rooti <- Roots] ++ lists:merge(Result_Till_Now).
@@ -229,7 +229,7 @@ send_message_to_proc_without_fail(Name,Message)->	%The function is send message 
 
 %%End my code
 %%%===================================================================
-
+%%The server will almost only pass messages to the node's processes. It happend in order to avoid the battleneck that can happen. In other words the server doesn't do a difficult missions.
 %%--------------------------------------------------------------------
 %%--------------------------------------------------------------------
 %%%===================================================================
