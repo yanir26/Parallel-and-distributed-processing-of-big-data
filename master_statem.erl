@@ -65,8 +65,8 @@ init([Number_Of_Workers]) ->
   
 
 state_start(Number_Of_Workers)->
-  gen_server:start_link({local, node()}, master, [Number_Of_Workers], []),
-  spawn(fun() ->  master:keep_alive_fun() end), %keep alive
+  gen_server:start_link({local, node()}, master, [Number_Of_Workers], []),	%open gen_server
+  spawn(fun() ->  master:keep_alive_fun() end), %open the process that check the keepalive
   ok.
 
 %%--------------------------------------------------------------------
@@ -131,6 +131,7 @@ wait_until_workers_finish(cast,broadcast_finish_to_read_file,{Number_Of_Workers,
 		  end,
   {next_state, workers_finish, {Number_Of_Workers,Count_Start,0,{New_Frame,New_Text}}};
 
+%The situation where the master waits for the workers to finish processing
 wait_until_workers_finish(cast,broadcast_finish_to_read_file,{Number_Of_Workers,Count_Start,Count_Broadcast,Text})->
   {next_state, wait_until_workers_finish, {Number_Of_Workers,Count_Start,Count_Broadcast - 1,Text}};
 wait_until_workers_finish(cast,{restart,New_Number_Of_Workers},{Number_Of_Workers,Count_Start,_Count_Broadcast,{Frame,Text}})->
@@ -145,7 +146,7 @@ workers_finish(cast,kill,_Data)->
   stop;
 
 
-
+%The situation in which the workers finished working. Here the master's situation machine is waiting for events of killing or falling a computer
 workers_finish(cast,{restart,New_Number_Of_Workers},{Number_Of_Workers,Count_Start,_Count_Broadcast,{Frame,Text}})->
   wxStaticText:destroy(Text),
   New_Text = wxStaticText:new(Frame,2,"Computer down - wait a minute",[{pos,{150,100}}]),
