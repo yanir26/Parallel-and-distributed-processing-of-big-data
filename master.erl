@@ -39,11 +39,12 @@
 
 % instruction = [Id,List_Of_Nodes,master_node]
 start(Number_Of_Workers)->
-  gen_statem:start_link({local, master_statem}, master_statem, [Number_Of_Workers], []),
+  gen_statem:start_link({local, master_statem}, master_statem, [Number_Of_Workers], []),	%open a gen_statem
   ok.
 
-
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%This section is responsible for opening a Wx window and receiving input from the user. The master input is sent to the appropriate employee in charge of the appropriate word. 
+%%The master then waits for a final answer from the employee, and so on until the program ends
 get_input_from_customer(Input,Number_Of_Workers)->
   T1 = erlang:timestamp(),
   gen_server:cast(?SERVER,new_mission),
@@ -82,11 +83,11 @@ wxDisplay(Number_Of_Workers)->
   wxFrame:show(Frame),
   {Frame,StaticText}.
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 first_letter(Element)->hd(string:lowercase(Element)). %Give the first letter in word, but only lowercase
 
-for_which_worker(Element,Number_Of_Workers)->
+for_which_worker(Element,Number_Of_Workers)->	%This function is a promotion of the matches between the name of the researcher and the employee responsible for the field of letters in which the name of the researcher is included.
   First_Letter = first_letter(Element),
   Index = if
             ((First_Letter >= 97) and (First_Letter =< 122)) -> round(math:ceil(((First_Letter - 97 + 0.0001 ) * Number_Of_Workers) / 26));
@@ -95,12 +96,13 @@ for_which_worker(Element,Number_Of_Workers)->
   Index.
 
 
-replace(String,Symbol,New_Symbol)-> replace(string:replace(String,Symbol,New_Symbol,all),[]).
+replace(String,Symbol,New_Symbol)-> replace(string:replace(String,Symbol,New_Symbol,all),[]).%This function replaces "" with "_" and also removes any symbol other than a letter
 replace([],List)->[Letter || Letter <- List, ((hd(string:lowercase([Letter])) >= 97) and (hd(string:lowercase([Letter])) =< 122)) or (Letter =:= hd("_"))];
 replace([H|T],List)-> replace(T,List ++ H).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+%%This process gets up and checks with the computers every TIMER microseconds if they are alive, and actually counts how many of them are alive.
+%%If a computer crashes it shuts down the entire system and runs the program again.
 keep_alive_fun()->
   List_Of_Workers = gen_server:call(?SERVER,who_is_workers,infinity),
   Number_Of_Workers = length(List_Of_Workers),
@@ -327,7 +329,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+%%This section is responsible for setting up ETS and printing the table on the screen
 makeTable(Input1,Edges)->
   Input = replace(Input1," ","_"),
   G = digraph:new(),
