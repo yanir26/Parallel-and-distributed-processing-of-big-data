@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @author elioz
+%%% @author Elioz & Yanir
 %%% @copyright (C) 2021, <COMPANY>
 %%% @doc
 %%%
@@ -7,7 +7,7 @@
 %%% Created : 12. Aug 2021 1:41 AM
 %%%-------------------------------------------------------------------
 -module(master_statem).
--author("elioz").
+-author("Elioz & Yanir").
 
 -behaviour(gen_statem).
 
