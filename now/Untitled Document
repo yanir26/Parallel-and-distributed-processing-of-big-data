@@ -1,0 +1,87 @@
+c(csv_reader). 
+c(worker).
+worker:start('master@132.72.18.61').
+
+
+
+
+
+
+c(graphviz).
+c(master_statem).
+c(master).
+master:start(4).
+
+
+
+
+
+
+Bo An
+Ed Gerck %not work
+Gunter Bitz
+Borko Furht
+
+
+
+Lei Yue
+Sen Bai
+Ahmed El-Kishky
+Jos?? C. Pr??ncipe
+Ai Fen Sui
+David Gallaher
+Petra Isenberg 
+Yanli Fan
+Sung Kim
+Paolo Nesi
+Gilles Gasiot
+Dennis Sylvester
+Nan Sun // not work!!!!!!!!!!!!
+Li Hao
+
+
+
+
+process 
+1 terminal:
+Runtime for reading the data  = 4233096 microseconds 
+Runtime for reading the data  = 4521639 microseconds 
+Runtime for reading the data  = 5095984 microseconds 
+Runtime for reading the data  = 5154284 microseconds 
+
+
+4 trminals:
+Runtime for reading the data  = 4818150 microseconds 
+Runtime for reading the data  = 4173102 microseconds 
+Runtime for reading the data  = 4931750 microseconds
+Runtime for reading the data  = 5624837 microseconds
+
+4 computers:
+
+Runtime for reading the data  = 5535780     microseconds 
+Runtime for reading the data  = 5063447     microseconds 
+Runtime for reading the data  = 5886173     microseconds
+Runtime for reading the data  = 2695112     microseconds
+
+
+
+
+
+Lei Yue  Runtime for creating a tree  = 4955810 microseconds, process = 3 +  
+Sen Bai   Runtime for creating a tree  = 46503230 microseconds , process = 3 +
+Ahmed El-Kishky     Runtime for creating a tree  = 88246127 microseconds, process = 3 +
+Jos?? C. Pr??ncipe            , process = 3 +
+Ai Fen Sui                     , process = 3 +
+David Gallaher                  , process = 3 +
+Petra Isenberg                      , process = 3 +
+Yanli Fan                     , process = 3 +
+Sung Kim                       , process = 3 +
+Paolo Nesi                     , process = 3 +
+Gilles Gasiot			 , process = 3 +
+Dennis Sylvester                 , process = 3 +
+Nan Sun // not work!!!!!!!!!!!!                , process = 3 +
+Li Hao                            , process = 3 +
+
+
+
+
