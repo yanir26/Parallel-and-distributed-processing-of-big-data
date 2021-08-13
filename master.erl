@@ -328,7 +328,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-makeTable(Input,Edges)->
+makeTable(Input1,Edges)->
+  Input = replace(Input1," ","_"),
   G = digraph:new(),
   buildTree(Edges,G),
   Ets = ets:new(tab,[set]),
@@ -383,8 +384,10 @@ buildTree(Edg,build)->
 buildTree([],G)->G;
 
 buildTree(Edg,G)->
-  digraph:add_vertex(G,element(1,hd(Edg))),
-  digraph:add_vertex(G,element(2,hd(Edg))),
-  digraph:add_edge(G,element(1,hd(Edg)),element(2,hd(Edg))),
+  A = replace(element(1,hd(Edg))," ","_"),
+  B = replace(element(2,hd(Edg))," ","_"),
+  digraph:add_vertex(G,A),
+  digraph:add_vertex(G,B),
+  digraph:add_edge(G,A,B),
   buildTree(tl(Edg),G).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
