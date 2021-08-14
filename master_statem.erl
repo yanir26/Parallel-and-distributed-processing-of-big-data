@@ -60,7 +60,7 @@
 init([Number_Of_Workers]) ->
   state_start(Number_Of_Workers),
   State = wait_until_workers_finish,
-  Data = {Number_Of_Workers,0,?NUMBER_OF_FILES,{bla,bla}}, %{Number_Of_Workers,Count_Start,Count_Broadcast},
+  Data = {Number_Of_Workers,0,?NUMBER_OF_FILES,{bla,bla,bla,bla}}, %{Number_Of_Workers,Count_Start,Count_Broadcast},
   {ok, State, Data}.
   
 
@@ -122,24 +122,25 @@ state_name(_EventType, _EventContent, State) ->
   NextStateName = next_state,
   {next_state, NextStateName, State}.
 
-wait_until_workers_finish(cast,broadcast_finish_to_read_file,{Number_Of_Workers,Count_Start,1,{Frame,Text}})->
-{New_Frame,New_Text} =        if
+wait_until_workers_finish(cast,broadcast_finish_to_read_file,{Number_Of_Workers,Count_Start,1,{Frame,Text,Button,TextBox}})->
+{New_Frame,New_Text,New_Button,New_TextBox} =        if
 		   Count_Start =:= 0 -> master:wxDisplay(Number_Of_Workers);
 		   true -> 
 			  wxStaticText:destroy(Text),
-		  	  {Frame,wxStaticText:new(Frame,2,"Write the author full name",[{pos,{170,100}}])}
+		  	  {Frame,wxStaticText:new(Frame,2,"Write the author full name",[{pos,{170,100}}]),Button,TextBox}
 		  end,
-  {next_state, workers_finish, {Number_Of_Workers,Count_Start,0,{New_Frame,New_Text}}};
+  {next_state, workers_finish, {Number_Of_Workers,Count_Start,0,{New_Frame,New_Text,New_Button,New_TextBox}}};
 
 %The situation where the master waits for the workers to finish processing
 wait_until_workers_finish(cast,broadcast_finish_to_read_file,{Number_Of_Workers,Count_Start,Count_Broadcast,Text})->
   {next_state, wait_until_workers_finish, {Number_Of_Workers,Count_Start,Count_Broadcast - 1,Text}};
-wait_until_workers_finish(cast,{restart,New_Number_Of_Workers},{Number_Of_Workers,Count_Start,_Count_Broadcast,{Frame,Text}})->
+wait_until_workers_finish(cast,{restart,New_Number_Of_Workers},{_Number_Of_Workers,Count_Start,_Count_Broadcast,{Frame,Text,Button,TextBox}})->
+  wxButton:connect(Button,command_button_clicked,[{callback,fun(_,_)->master:get_input_from_customer(wxTextCtrl:getLineText(TextBox,0),New_Number_Of_Workers)end}]),
   wxStaticText:destroy(Text),
   New_Text = wxStaticText:new(Frame,2,"Computer down - wait a minute",[{pos,{150,100}}]),
   state_start(New_Number_Of_Workers),
   State = wait_until_workers_finish,
-  Data = {Number_Of_Workers,Count_Start + 1,?NUMBER_OF_FILES,{Frame,New_Text}},
+  Data = {New_Number_Of_Workers,Count_Start + 1,?NUMBER_OF_FILES,{Frame,New_Text,Button,TextBox}},
   {next_state, State, Data}.
 
 workers_finish(cast,kill,_Data)->
@@ -147,12 +148,13 @@ workers_finish(cast,kill,_Data)->
 
 
 %The situation in which the workers finished working. Here the master's situation machine is waiting for events of killing or falling a computer
-workers_finish(cast,{restart,New_Number_Of_Workers},{Number_Of_Workers,Count_Start,_Count_Broadcast,{Frame,Text}})->
+workers_finish(cast,{restart,New_Number_Of_Workers},{Number_Of_Workers,Count_Start,_Count_Broadcast,{Frame,Text,Button,TextBox}})->
+  wxButton:connect(Button,command_button_clicked,[{callback,fun(_,_)->master:get_input_from_customer(wxTextCtrl:getLineText(TextBox,0),New_Number_Of_Workers)end}]),  
   wxStaticText:destroy(Text),
   New_Text = wxStaticText:new(Frame,2,"Computer down - wait a minute",[{pos,{150,100}}]),
   state_start(New_Number_Of_Workers),
   State = wait_until_workers_finish,
-  Data = {Number_Of_Workers,Count_Start + 1,?NUMBER_OF_FILES,{Frame,New_Text}},
+  Data = {Number_Of_Workers,Count_Start + 1,?NUMBER_OF_FILES,{Frame,New_Text,Button,TextBox}},
   {next_state, State, Data}.
 
 

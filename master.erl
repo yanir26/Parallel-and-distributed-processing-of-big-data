@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start/1,wxDisplay/1,keep_alive_fun/0]).
+-export([start/1,wxDisplay/1,keep_alive_fun/0,get_input_from_customer/2]).
 
 -include_lib("wx/include/wx.hrl").
 %% gen_server callbacks
@@ -45,6 +45,7 @@ start(Number_Of_Workers)->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%This section is responsible for opening a Wx window and receiving input from the user. The master input is sent to the appropriate employee in charge of the appropriate word. 
 %%The master then waits for a final answer from the employee, and so on until the program ends
+get_input_from_customer([],_)-> io:formt("Empty search");
 get_input_from_customer(Input,Number_Of_Workers)->
   T1 = erlang:timestamp(),
   gen_server:cast(?SERVER,new_mission),
@@ -77,11 +78,11 @@ wxDisplay(Number_Of_Workers)->
   wxStaticBitmap:new(Frame, ?wxID_ANY, Bitmap),
   StaticText = wxStaticText:new(Frame,2,"Write the author full name",[{pos,{170,100}}]),
   Button = wxButton:new(Frame,3,[{label,"Search"},{size,{50,50}},{pos,{230,50}}]),
-  Text = wxTextCtrl:new(Frame,60,[{pos,{160,120}},{size,{200,30}}]),
-  wxButton:connect(Button,command_button_clicked,[{callback,fun(_,_)->get_input_from_customer(wxTextCtrl:getLineText(Text,0),Number_Of_Workers)end}]),
+  TextBox = wxTextCtrl:new(Frame,60,[{pos,{160,120}},{size,{200,30}}]),
+  wxButton:connect(Button,command_button_clicked,[{callback,fun(_,_)->get_input_from_customer(wxTextCtrl:getLineText(TextBox,0),Number_Of_Workers)end}]),
   wxButton:connect(Frame,close_window,[{callback,fun(_,_)->gen_server:stop(?SERVER),gen_statem:cast(master_statem,kill),wxFrame:destroy(Frame) end}]),
   wxFrame:show(Frame),
-  {Frame,StaticText}.
+  {Frame,StaticText,Button,TextBox}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
