@@ -32,7 +32,7 @@ master:start(NUMBER_OF_WORKER).
 
 NUMBER_OF_WORKER -  This argument define the number of workers (computers).
 
-The progrem start after all the worker send keep-alive massage to the master computer. 
+The progrem start after all the workers send a "keep-alive" massage to the master computer. 
 
 **In the worker you need to write:**
 
