@@ -12,7 +12,7 @@ Link for Youtube video: https://www.youtube.com/watch?v=7HWlEaO4jUk
 
 
 # How to run the program
-**For the work with more then one computer we need to write in all the computers:**
+**If you would like to work with more then one computer you will need to write the following line in all of the computers:**
 ```
 erl -name NAME@ADDRESS -setcookie dblp
 ```
