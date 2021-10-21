@@ -30,7 +30,7 @@ c(master).
 master:start(NUMBER_OF_WORKER).
 ```
 
-NUMBER_OF_WORKER - The code work with how many worker (computer) that the user want, this argument define the number of worker.
+NUMBER_OF_WORKER -  This argument define the number of workers (computers).
 
 The progrem start after all the worker send keep-alive massage to the master computer. 
 
